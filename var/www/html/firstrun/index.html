@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starlight Hypervisor - Setup Wizard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #f7f9fb;
+            --bg-card: #ffffff;
+            --text-primary: #1f2937;
+            --text-secondary: #4b5563;
+            --text-tertiary: #6b7280;
+            --indigo-500: #6366f1;
+            --indigo-600: #4f46e5;
+            --indigo-700: #4338ca;
+            --border-color: #e5e7eb;
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --green-500: #22c55e;
+            --green-600: #16a34a;
+            --red-500: #ef4444;
+            --red-600: #dc2626;
+            --yellow-500: #eab308;
+            --yellow-100: #fef9c3;
+            --yellow-800: #854d0e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .wizard-container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .logo-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .logo-title {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .logo-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin-bottom: 2rem;
+        }
+
+        .progress-bar {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .progress-bar::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--border-color);
+            transform: translateY(-50%);
+            z-index: 0;
+        }
+
+        .progress-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--bg-card);
+            border: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            transition: all 0.3s ease;
+        }
+
+        .step-circle.active {
+            border-color: var(--indigo-500);
+            color: var(--indigo-500);
+        }
+
+        .step-circle.completed {
+            background-color: var(--indigo-500);
+            border-color: var(--indigo-500);
+            color: white;
+        }
+
+        .step-label {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            margin-top: 0.5rem;
+            text-align: center;
+            max-width: 80px;
+        }
+
+        .step-label.active {
+            color: var(--indigo-500);
+            font-weight: 500;
+        }
+
+        /* Card */
+        .wizard-card {
+            background-color: var(--bg-card);
+            border-radius: 1rem;
+            box-shadow: var(--shadow-lg);
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Step Content */
+        .step-content {
+            display: none;
+        }
+
+        .step-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .step-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .step-description {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--indigo-500);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .form-input.error {
+            border-color: var(--red-500);
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            margin-top: 0.25rem;
+        }
+
+        .form-error {
+            font-size: 0.75rem;
+            color: var(--red-500);
+            margin-top: 0.25rem;
+        }
+
+        /* Password Strength */
+        .password-strength {
+            margin-top: 0.5rem;
+        }
+
+        .strength-bar {
+            height: 4px;
+            background-color: var(--border-color);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 0.25rem;
+        }
+
+        .strength-fill {
+            height: 100%;
+            transition: width 0.3s, background-color 0.3s;
+        }
+
+        .strength-fill.weak { width: 25%; background-color: var(--red-500); }
+        .strength-fill.fair { width: 50%; background-color: #f97316; }
+        .strength-fill.good { width: 75%; background-color: var(--yellow-500); }
+        .strength-fill.strong { width: 100%; background-color: var(--green-500); }
+
+        .strength-text {
+            font-size: 0.75rem;
+        }
+
+        .strength-text.weak { color: var(--red-500); }
+        .strength-text.fair { color: #f97316; }
+        .strength-text.good { color: var(--yellow-500); }
+        .strength-text.strong { color: var(--green-500); }
+
+        /* Alert Boxes */
+        .alert {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .alert-warning {
+            background-color: var(--yellow-100);
+            border: 1px solid var(--yellow-500);
+            color: var(--yellow-800);
+        }
+
+        .alert-success {
+            background-color: #dcfce7;
+            border: 1px solid var(--green-500);
+            color: #166534;
+        }
+
+        .alert-error {
+            background-color: #fee2e2;
+            border: 1px solid var(--red-500);
+            color: #991b1b;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Info Box */
+        .info-box {
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .info-value {
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background-color: var(--indigo-500);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--indigo-600);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-primary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: var(--border-color);
+        }
+
+        .btn-success {
+            background-color: var(--green-500);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background-color: var(--green-600);
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .button-group .btn {
+            flex: 1;
+        }
+
+        /* Checkmark Animation */
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+            background-color: var(--green-500);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .success-icon svg {
+            width: 40px;
+            height: 40px;
+            stroke: white;
+            stroke-width: 3;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem;
+            }
+
+            .wizard-card {
+                padding: 1.5rem;
+            }
+
+            .step-label {
+                display: none;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
+
+        /* Radio/Checkbox styling */
+        .option-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .option-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .option-item:hover {
+            border-color: var(--indigo-500);
+        }
+
+        .option-item input {
+            margin-right: 0.75rem;
+        }
+
+        .option-item label {
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .countdown {
+            font-size: 0.875rem;
+            color: var(--text-tertiary);
+            text-align: center;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="wizard-container">
+        <!-- Logo Header -->
+        <div class="logo-header">
+            <div class="logo">⭐</div>
+            <h1 class="logo-title">Starlight</h1>
+            <p class="logo-subtitle">Hypervisor Manager</p>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-step">
+                    <div class="step-circle active" data-step="1">1</div>
+                    <span class="step-label active">Welcome</span>
+                </div>
+                <div class="progress-step">
+                    <div class="step-circle" data-step="2">2</div>
+                    <span class="step-label">Root Password</span>
+                </div>
+                <div class="progress-step">
+                    <div class="step-circle" data-step="3">3</div>
+                    <span class="step-label">Admin User</span>
+                </div>
+                <div class="progress-step">
+                    <div class="step-circle" data-step="4">4</div>
+                    <span class="step-label">Network</span>
+                </div>
+                <div class="progress-step">
+                    <div class="step-circle" data-step="5">5</div>
+                    <span class="step-label">Storage</span>
+                </div>
+                <div class="progress-step">
+                    <div class="step-circle" data-step="6">✓</div>
+                    <span class="step-label">Complete</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wizard Card -->
+        <div class="wizard-card">
+            <!-- Step 1: Welcome -->
+            <div class="step-content active" data-step="1">
+                <h2 class="step-title">Welcome to Starlight</h2>
+                <p class="step-description">
+                    Thank you for installing Starlight Hypervisor! This wizard will help you complete the initial setup of your system.
+                </p>
+                
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Hostname</span>
+                        <span class="info-value" id="system-hostname">Loading...</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">IP Address</span>
+                        <span class="info-value" id="system-ip">Loading...</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">System Status</span>
+                        <span class="info-value" id="system-status">Ready</span>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary btn-full" onclick="wizard.nextStep()">
+                        Get Started
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Change Root Password -->
+            <div class="step-content" data-step="2">
+                <h2 class="step-title">Change Root Password</h2>
+                <p class="step-description">
+                    For security, you must change the default root password before continuing.
+                </p>
+
+                <div class="alert alert-warning">
+                    <div class="alert-title">⚠️ Security Required</div>
+                    <p>The default root password must be changed to secure your system.</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">New Root Password</label>
+                    <input type="password" class="form-input" id="root-password" 
+                           placeholder="Enter new password" oninput="wizard.checkPasswordStrength('root')">
+                    <div class="password-strength">
+                        <div class="strength-bar">
+                            <div class="strength-fill" id="root-strength-fill"></div>
+                        </div>
+                        <span class="strength-text" id="root-strength-text"></span>
+                    </div>
+                    <p class="form-hint">Minimum 8 characters, include uppercase, lowercase, and numbers</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="password" class="form-input" id="root-password-confirm" 
+                           placeholder="Confirm new password" oninput="wizard.validatePasswordMatch('root')">
+                    <p class="form-error" id="root-match-error" style="display: none;">Passwords do not match</p>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="wizard.prevStep()">Back</button>
+                    <button class="btn btn-primary" id="root-next-btn" onclick="wizard.setRootPassword()" disabled>
+                        Continue
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Create Admin User -->
+            <div class="step-content" data-step="3">
+                <h2 class="step-title">Create Admin User</h2>
+                <p class="step-description">
+                    Create an administrator account for managing Starlight through the web interface.
+                </p>
+
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-input" id="admin-username" 
+                           placeholder="admin" oninput="wizard.validateUsername()">
+                    <p class="form-hint">Lowercase letters, numbers, and underscores only</p>
+                    <p class="form-error" id="username-error" style="display: none;"></p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="admin-password" 
+                           placeholder="Enter password" oninput="wizard.checkPasswordStrength('admin')">
+                    <div class="password-strength">
+                        <div class="strength-bar">
+                            <div class="strength-fill" id="admin-strength-fill"></div>
+                        </div>
+                        <span class="strength-text" id="admin-strength-text"></span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="password" class="form-input" id="admin-password-confirm" 
+                           placeholder="Confirm password" oninput="wizard.validatePasswordMatch('admin')">
+                    <p class="form-error" id="admin-match-error" style="display: none;">Passwords do not match</p>
+                </div>
+
+                <div class="info-box">
+                    <p style="font-size: 0.875rem; color: var(--text-secondary);">
+                        This user will be added to the <code>starlight-users</code> group with administrator privileges.
+                    </p>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="wizard.prevStep()">Back</button>
+                    <button class="btn btn-primary" id="admin-next-btn" onclick="wizard.createAdmin()" disabled>
+                        Continue
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 4: Network Configuration -->
+            <div class="step-content" data-step="4">
+                <h2 class="step-title">Network Configuration</h2>
+                <p class="step-description">
+                    Configure your network settings. You can also change these later in Settings.
+                </p>
+
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Current IP</span>
+                        <span class="info-value" id="current-ip">Loading...</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Interface</span>
+                        <span class="info-value" id="current-interface">Loading...</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Hostname</label>
+                    <input type="text" class="form-input" id="network-hostname" 
+                           placeholder="starlight" value="starlight">
+                    <p class="form-hint">The name of this server on the network</p>
+                </div>
+
+                <div class="option-group">
+                    <div class="option-item">
+                        <input type="radio" name="network-config" id="network-dhcp" value="dhcp" checked>
+                        <label for="network-dhcp">
+                            <strong>Use DHCP (Recommended)</strong><br>
+                            <span style="font-size: 0.875rem; color: var(--text-tertiary);">
+                                Automatically obtain IP address
+                            </span>
+                        </label>
+                    </div>
+                    <div class="option-item">
+                        <input type="radio" name="network-config" id="network-skip" value="skip">
+                        <label for="network-skip">
+                            <strong>Configure Later</strong><br>
+                            <span style="font-size: 0.875rem; color: var(--text-tertiary);">
+                                Keep current settings
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="wizard.prevStep()">Back</button>
+                    <button class="btn btn-primary" onclick="wizard.setNetwork()">Continue</button>
+                </div>
+            </div>
+
+            <!-- Step 5: Storage Configuration -->
+            <div class="step-content" data-step="5">
+                <h2 class="step-title">Storage Configuration</h2>
+                <p class="step-description">
+                    Configure where virtual machine disk images will be stored.
+                </p>
+
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Available Space</span>
+                        <span class="info-value" id="available-space">Loading...</span>
+                    </div>
+                </div>
+
+                <div class="option-group">
+                    <div class="option-item">
+                        <input type="radio" name="storage-config" id="storage-default" value="default" checked>
+                        <label for="storage-default">
+                            <strong>Use Default Location</strong><br>
+                            <code style="font-size: 0.875rem; color: var(--text-tertiary);">
+                                /var/lib/libvirt/images
+                            </code>
+                        </label>
+                    </div>
+                    <div class="option-item">
+                        <input type="radio" name="storage-config" id="storage-custom" value="custom">
+                        <label for="storage-custom">
+                            <strong>Custom Location</strong>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="custom-storage-path" style="display: none;">
+                    <label class="form-label">Storage Path</label>
+                    <input type="text" class="form-input" id="storage-path" 
+                           placeholder="/path/to/storage">
+                    <p class="form-hint">Directory must exist and be writable</p>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="wizard.prevStep()">Back</button>
+                    <button class="btn btn-primary" onclick="wizard.setStorage()">Continue</button>
+                </div>
+            </div>
+
+            <!-- Step 6: Complete -->
+            <div class="step-content" data-step="6">
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                
+                <h2 class="step-title" style="text-align: center;">Setup Complete!</h2>
+                <p class="step-description" style="text-align: center;">
+                    Starlight Hypervisor is now configured and ready to use.
+                </p>
+
+                <div class="alert alert-success">
+                    <div class="alert-title">✓ All steps completed successfully</div>
+                </div>
+
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Access URL</span>
+                        <span class="info-value" id="access-url">https://...</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Admin User</span>
+                        <span class="info-value" id="created-admin">-</span>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-success btn-full" onclick="wizard.finish()">
+                        Finish Setup
+                    </button>
+                </div>
+
+                <p class="countdown" id="countdown">
+                    Redirecting to Starlight in <span id="countdown-seconds">10</span> seconds...
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Toast -->
+    <div id="error-toast" style="display: none; position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); background: var(--red-500); color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; box-shadow: var(--shadow-lg); z-index: 1000;">
+        <span id="error-message"></span>
+    </div>
+
+    <script src="wizard.js"></script>
+</body>
+</html>

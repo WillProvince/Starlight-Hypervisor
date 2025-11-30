@@ -1,0 +1,16 @@
+# Starlight Hypervisor Manager - Python Dependencies
+
+# Core web framework
+aiohttp>=3.8.0
+
+# Virtualization
+libvirt-python>=9.0.0
+
+# Authentication
+# Note: python3-pam must be installed via apt (not pip)
+# Run: sudo apt install python3-pam
+PyJWT>=2.8.0
+bcrypt>=4.0.0
+
+# Optional dependencies for enhanced features
+# requests>=2.31.0  # For repository fetching if needed

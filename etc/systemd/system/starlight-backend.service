@@ -1,0 +1,23 @@
+[Unit]
+Description=Starlight Hypervisor Backend Server
+Documentation=https://github.com/starlight
+After=network.target libvirtd.service
+Wants=libvirtd.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/
+ExecStart=/bin/bash /opt/starlight_startup.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+NoNewPrivileges=false
+PrivateTmp=true
+
+
+[Install]
+WantedBy=multi-user.target

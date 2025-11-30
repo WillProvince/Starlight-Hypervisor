@@ -1,0 +1,71 @@
+# Starlight First-Run Wizard Configuration
+# This configuration redirects all traffic to the first-run wizard
+# After wizard completion, this is replaced with the main Starlight configuration
+
+# HTTP to HTTPS Redirect
+server {
+	listen 80 default_server;
+	listen [::]:80 default_server;
+	server_name _;
+	
+	return 301 https://$host$request_uri;
+}
+
+# HTTPS Server - First Run Wizard
+server {
+	listen 443 ssl default_server;
+	listen [::]:443 ssl default_server;
+
+	root /var/www/html;
+
+	server_name _;
+
+	include snippets/self-signed.conf;
+
+	# Redirect root to firstrun wizard
+	location = / {
+		return 302 /firstrun/;
+	}
+
+	# Serve firstrun wizard static files
+	location /firstrun/ {
+		alias /var/www/html/firstrun/;
+		try_files $uri $uri/ /firstrun/index.html;
+	}
+
+	# API endpoints for firstrun wizard - no authentication required
+	location /api/firstrun/ {
+		proxy_pass http://127.0.0.1:5000;
+
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+
+		proxy_buffering off;
+	}
+
+	# Block all other API endpoints until setup is complete
+	location /api/ {
+		return 403 '{"status": "error", "message": "Complete first-run wizard first"}';
+		add_header Content-Type application/json;
+	}
+
+	# Serve static assets (CSS, JS, images)
+	location /css/ {
+		try_files $uri =404;
+	}
+
+	location /js/ {
+		try_files $uri =404;
+	}
+
+	location /themes/ {
+		try_files $uri =404;
+	}
+
+	# Fallback - redirect everything else to wizard
+	location / {
+		return 302 /firstrun/;
+	}
+}

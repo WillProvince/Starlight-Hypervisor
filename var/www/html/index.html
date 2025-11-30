@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starlight Hypervisor Manager</title>
+    
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- Load noVNC library from CDN -->
+    <script type="module" crossorigin="anonymous">
+        import RFB from 'https://cdn.jsdelivr.net/npm/@novnc/novnc@1.4.0/core/rfb.js';
+        window.RFB = RFB;
+        console.log('noVNC RFB module loaded');
+    </script>
+    
+    <!-- Load xterm.js for terminal emulation -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script>
+        console.log('xterm.js loaded');
+    </script>
+
+    <!-- Modular CSS Files -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/sidebar.css">
+    <link rel="stylesheet" href="/css/vnc-terminal.css">
+    <link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1 class="text-xl font-bold">⭐ Starlight</h1>
+                <p class="text-xs text-gray-400 mt-1">Hypervisor Manager</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="sidebar-nav-main">
+                    <a class="nav-item active" data-page="vms" onclick="navigateTo('vms')">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                        </svg>
+                        Deployed
+                    </a>
+                    
+                    <a class="nav-item" data-page="appstore" onclick="navigateTo('appstore')">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                        </svg>
+                        App Store
+                    </a>
+                </div>
+                
+                <div class="sidebar-bottom">
+                    <!-- Downloads Progress Section -->
+                    <div id="sidebar-downloads" class="sidebar-downloads hidden">
+                        <div class="sidebar-downloads-header">
+                            <svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            Deploying
+                        </div>
+                        <div id="sidebar-downloads-list">
+                            <!-- Progress items will be inserted here -->
+                        </div>
+                    </div>
+                    
+                    <a class="nav-item" data-page="settings" onclick="navigateTo('settings')">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Settings
+                    </a>
+                </div>
+            </nav>
+        </aside>
+        
+        <!-- Sidebar Retract Button (Mobile) -->
+        <button id="sidebar-retract-btn" onclick="toggleSidebar()" aria-label="Close sidebar">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </button>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Topbar -->
+            <header class="topbar">
+                <div class="flex items-center">
+                    <button class="md:hidden mr-4" onclick="toggleSidebar()">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                    <h2 class="text-2xl font-bold" style="color: var(--text-primary);" id="page-title">Deployed</h2>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- User Menu (shown when authenticated) -->
+                    <div id="user-menu" class="relative hidden">
+                        <button onclick="toggleUserMenu()" class="flex items-center space-x-2 text-sm font-medium hover:text-indigo-600 transition" style="color: var(--text-primary);">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            <span id="current-username">User</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-48 rounded-lg shadow-lg py-1 z-50" style="background-color: var(--bg-card); border: 1px solid var(--border-color);">
+                            <a href="#" onclick="navigateTo('api-keys'); toggleUserMenu(); return false;" class="flex items-center px-4 py-2 text-sm hover:bg-gray-100" style="color: var(--text-primary);">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                                </svg>
+                                API Keys
+                            </a>
+                            <a href="#" id="user-mgmt-link" onclick="navigateTo('user-management'); toggleUserMenu(); return false;" class="hidden flex items-center px-4 py-2 text-sm hover:bg-gray-100" style="color: var(--text-primary);">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                                Users
+                            </a>
+                            <a href="#" id="reboot-server-link" onclick="rebootServer(); toggleUserMenu(); return false;" class="hidden flex items-center px-4 py-2 text-sm hover:bg-gray-100" style="color: var(--text-primary);">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Reboot Server
+                            </a>
+                            <a href="#" id="shutdown-server-link" onclick="shutdownServer(); toggleUserMenu(); return false;" class="hidden flex items-center px-4 py-2 text-sm hover:bg-gray-100" style="color: var(--text-primary);">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                </svg>
+                                Shutdown Server
+                            </a>
+                            <div class="border-t" style="border-color: var(--border-color);"></div>
+                            <a href="#" onclick="showUserChangePasswordModal(); toggleUserMenu(); return false;" class="flex items-center px-4 py-2 text-sm hover:bg-gray-100" style="color: var(--text-primary);">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                                </svg>
+                                Change Password
+                            </a>
+                            <div class="border-t" style="border-color: var(--border-color);"></div>
+                            <a href="#" onclick="logout(); toggleUserMenu(); return false;" class="flex items-center px-4 py-2 text-sm hover:bg-gray-100 text-red-600">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                </svg>
+                                Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Toast Notification (Fixed Position) -->
+            <div id="status-message" class="hidden p-4 rounded-lg font-medium text-sm"></div>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Deployed Page -->
+                <div id="page-vms" class="page-view active">
+                    <!-- Unified Console Viewer with Tabs -->
+                    <div id="console-viewer" class="hidden">
+                        <div class="console-tab-bar">
+                            <div id="console-tabs" class="console-tabs-container">
+                                <!-- Tabs will be dynamically added here -->
+                            </div>
+                        </div>
+                        <div id="console-area" class="console-area">
+                            <!-- Console content containers will be dynamically added here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Legacy console viewers (hidden by console manager) -->
+                    <div id="vnc-viewer-inline" class="hidden" style="display: none;">
+                        <div id="vnc-header">
+                            <div class="flex items-center">
+                                <h3 id="vnc-title" class="text-lg font-semibold mr-4">VNC Console</h3>
+                                <span id="vnc-status" class="text-xs font-semibold px-2 py-1 rounded-full vnc-status-info">Ready</span>
+                            </div>
+                            <button onclick="closeVncViewer()" class="text-sm bg-red-600 hover:bg-red-700 py-2 px-4 rounded-lg transition duration-150 font-semibold">
+                                Close Console
+                            </button>
+                        </div>
+                        <div id="vnc-canvas-container">
+                            <!-- RFB will create and insert canvas here -->
+                        </div>
+                        <div id="vnc-controls">
+                            <div class="flex flex-wrap gap-x-3 gap-y-2">
+                                <button id="vnc-start-btn" onclick="vncControlVm('start')" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                                    ▶ Start
+                                </button>
+                                <button id="vnc-restart-btn" onclick="vncControlVm('restart')" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                                    🔄 Restart
+                                </button>
+                                <button id="vnc-stop-btn" onclick="vncControlVm('stop')" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                                    ⏹ Stop
+                                </button>
+                                <button id="vnc-force-stop-btn" onclick="vncControlVm('destroy')" class="bg-red-700 hover:bg-red-800 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                                    ⚠️ Force Stop
+                                </button>
+                                <button id="vnc-paste-btn" onclick="handleVncPasteButton()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150" title="Paste text into VNC (works on mobile too!)">
+                                    📋 Paste
+                                </button>
+                            </div>
+                            <div class="text-sm" style="color: var(--text-secondary);">
+                                <div class="flex items-center gap-2">
+                                    <span id="vnc-vm-name"></span>
+                                    <span id="clipboard-status" class="text-xs px-2 py-0.5 rounded-full" style="display: none;">
+                                        <span id="clipboard-status-icon"></span>
+                                        <span id="clipboard-status-text"></span>
+                                    </span>
+                                </div>
+                                <div class="mt-1" style="font-size: 0.75rem; opacity: 0.8;">
+                                    💡 Tip: Copy/paste works! Text copied in VNC auto-copies to your clipboard. Use Ctrl+V, Cmd+V (Mac), Shift+V, or the Paste button.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Legacy Terminal Viewer (hidden by console manager) -->
+                    <div id="terminal-viewer-inline" class="hidden" style="display: none;">
+                        <div id="terminal-header" style="background: var(--card-bg); border: 1px solid var(--border-color); padding: 1rem; border-radius: 0.5rem 0.5rem 0 0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0;">
+                            <div class="flex items-center">
+                                <h3 id="terminal-title" class="text-lg font-semibold mr-4">Terminal Console</h3>
+                                <span id="terminal-status" class="text-xs font-semibold px-2 py-1 rounded-full vnc-status-info">Ready</span>
+                            </div>
+                            <button onclick="closeTerminal()" class="text-sm bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition duration-150 font-semibold">
+                                Close Console
+                            </button>
+                        </div>
+                        <div id="terminal-container" style="background: #000; border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 0.5rem 0.5rem; padding: 0.5rem; height: 600px;">
+                            <!-- xterm.js terminal will be inserted here -->
+                        </div>
+                        <div id="terminal-controls" style="background: var(--card-bg); border: 1px solid var(--border-color); border-top: none; padding: 1rem; margin-top: 0.5rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                            <div class="flex space-x-3">
+                                <button id="terminal-stop-btn" onclick="terminalControlVm('stop')" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                                    ⏹ Stop
+                                </button>
+                                <button id="terminal-force-stop-btn" onclick="terminalControlVm('destroy')" class="bg-red-700 hover:bg-red-800 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                                    ⚠️ Force Stop
+                                </button>
+                            </div>
+                            <div class="text-sm" style="color: var(--text-secondary);">
+                                <span id="terminal-vm-name"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 border-b pb-4 gap-3" style="border-color: var(--border-color);">
+                            <h3 class="text-xl font-semibold" style="color: var(--text-primary);">Virtual Machines</h3>
+                            <div class="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
+                                <div class="relative flex-1 md:flex-initial">
+                                    <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                    <input type="text" id="vm-search" placeholder="Search VMs..." 
+                                           oninput="filterVms(this.value)"
+                                           class="w-full md:w-64 pl-10 pr-4 py-2 rounded-lg border transition duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                           style="background-color: var(--bg-primary); color: var(--text-primary); border-color: var(--border-color);">
+                                </div>
+                                <button onclick="fetchVms()" class="flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    Refresh
+                                </button>
+                            </div>
+                        </div>
+                        <div id="vm-list" class="space-y-4">
+                            <p class="text-center" style="color: var(--text-tertiary);" id="loading-indicator">Loading VMs...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- App Store Page -->
+                <div id="page-appstore" class="page-view">
+                    <div class="card p-6">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 border-b pb-4 gap-3" style="border-color: var(--border-color);">
+                            <h3 class="text-xl font-semibold flex items-center" style="color: var(--text-primary);">
+                                <svg class="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                                </svg>
+                                App Store
+                            </h3>
+                            <div class="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
+                                <!-- Category Dropdown -->
+                                <div class="category-dropdown relative">
+                                    <button id="category-dropdown-btn" onclick="toggleCategoryDropdown()" 
+                                            class="flex items-center justify-between w-full md:w-auto px-4 py-2 rounded-lg border transition duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            style="background-color: var(--bg-primary); color: var(--text-primary); border-color: var(--border-color);">
+                                        <span class="flex items-center">
+                                            <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                            </svg>
+                                            <span id="category-dropdown-text">All</span>
+                                        </span>
+                                        <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </button>
+                                    <div id="category-dropdown-menu" class="hidden absolute left-0 mt-1 w-56 rounded-lg shadow-lg py-1 z-50 category-dropdown-menu"
+                                         style="background-color: var(--bg-card); border: 1px solid var(--border-color);">
+                                        <!-- Category options will be populated dynamically -->
+                                    </div>
+                                </div>
+                                <div class="relative flex-1 md:flex-initial">
+                                    <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                    <input type="text" id="app-search" placeholder="Search apps..." 
+                                           oninput="filterApps()"
+                                           class="w-full md:w-64 pl-10 pr-4 py-2 rounded-lg border transition duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                           style="background-color: var(--bg-primary); color: var(--text-primary); border-color: var(--border-color);">
+                                </div>
+                                <button onclick="fetchAppStore()" class="flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    Refresh
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="app-store-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <p class="text-center col-span-full" style="color: var(--text-tertiary);" id="repo-loading-indicator">Fetching App Repository...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div id="page-settings" class="page-view">
+                    <!-- Appearance Settings -->
+                    <div class="settings-section expandable-section">
+                        <div class="section-header" onclick="toggleSettingsSection('appearance-section')">
+                            <div class="flex items-center">
+                                <svg class="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
+                                </svg>
+                                <h3 class="text-xl font-semibold" style="color: var(--text-primary);">Appearance</h3>
+                            </div>
+                            <svg class="section-arrow w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                        <p class="text-sm mb-4 ml-8" style="color: var(--text-secondary);">Customize how Starlight looks</p>
+                        
+                        <div id="appearance-section" class="section-content">
+                            <!-- Theme Selector -->
+                            <div class="settings-option">
+                                <div class="flex-1">
+                                    <h4 class="font-medium" style="color: var(--text-primary);">Theme</h4>
+                                    <p class="text-sm" style="color: var(--text-tertiary);">Choose your preferred color theme</p>
+                                </div>
+                                <select id="theme-selector" onchange="window.ThemeManager.loadTheme(this.value)" 
+                                        class="px-3 py-2 border rounded-lg" style="background: var(--bg-card); color: var(--text-primary); border-color: var(--border-color);">
+                                    <option value="default">Light</option>
+                                    <option value="dark">Dark</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Custom Theme Import -->
+                            <div class="settings-option border-t" style="border-color: var(--border-color);">
+                                <div class="flex-1">
+                                    <h4 class="font-medium" style="color: var(--text-primary);">Custom Theme</h4>
+                                    <p class="text-sm" style="color: var(--text-tertiary);">Import a custom theme JSON file</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <label class="cursor-pointer px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition">
+                                        Import
+                                        <input type="file" id="theme-import-input" accept=".json" class="hidden" onchange="handleThemeImport(this)">
+                                    </label>
+                                    <button onclick="handleThemeExport()" 
+                                            class="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold rounded-lg transition">
+                                        Export
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Custom Themes List -->
+                            <div class="settings-option border-t" style="border-color: var(--border-color);">
+                                <div class="flex-1">
+                                    <h4 class="font-medium" style="color: var(--text-primary);">Installed Custom Themes</h4>
+                                    <p class="text-sm" style="color: var(--text-tertiary);">Manage your imported themes</p>
+                                    <div id="custom-themes-list" class="mt-3 space-y-2">
+                                        <!-- Custom themes will be rendered here -->
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Legacy Dark Mode Toggle (for backwards compatibility) -->
+                            <div class="settings-option border-t hidden" style="border-color: var(--border-color);">
+                                <div>
+                                    <h4 class="font-medium" style="color: var(--text-primary);">Dark Mode (Legacy)</h4>
+                                    <p class="text-sm" style="color: var(--text-tertiary);">Quick toggle for dark theme</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode()">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Change Password Section -->
+                    <div class="settings-section expandable-section">
+                        <div class="section-header" onclick="toggleSettingsSection('password-section')">
+                            <div class="flex items-center">
+                                <svg class="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                                </svg>
+                                <h3 class="text-xl font-semibold" style="color: var(--text-primary);">Change Password</h3>
+                            </div>
+                            <svg class="section-arrow w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                        <p class="text-sm mb-4 ml-8" style="color: var(--text-secondary);">Update your account password</p>
+                        
+                        <div id="password-section" class="section-content">
+                            <form id="inline-password-form" class="space-y-4">
+                                <div class="settings-option flex-col items-start">
+                                    <div id="inline-current-password-container" class="w-full mb-4">
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Current Password</label>
+                                        <input type="password" id="inline-current-password" 
+                                               class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                               style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" 
+                                               placeholder="Enter current password">
+                                    </div>
+                                    <div class="w-full mb-4">
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">New Password</label>
+                                        <input type="password" id="inline-new-password" required 
+                                               class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                               style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" 
+                                               placeholder="Enter new password">
+                                    </div>
+                                    <div class="w-full mb-4">
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Confirm Password</label>
+                                        <input type="password" id="inline-confirm-password" required 
+                                               class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                               style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" 
+                                               placeholder="Confirm new password">
+                                    </div>
+                                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                                        Update Password
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Administration Section (Admin only) -->
+                    <div id="settings-administration-section" class="administration-section expandable-section">
+                        <div class="section-header" onclick="toggleSettingsSection('administration-content')">
+                            <div class="flex items-center">
+                                <svg class="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                                </svg>
+                                <h3 class="text-xl font-semibold" style="color: var(--text-primary);">Administration</h3>
+                            </div>
+                            <svg class="section-arrow w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                        <p class="text-sm mb-4 ml-8" style="color: var(--text-secondary);">Administrative settings (Admin only)</p>
+
+                        <div id="administration-content" class="section-content">
+                            <!-- System Updates Setting -->
+                            <div class="settings-section admin-subsection">
+                                <div class="flex justify-between items-center mb-4">
+                                    <div>
+                                        <h3 class="text-lg font-semibold" style="color: var(--text-primary);">System Updates</h3>
+                                        <p class="text-sm mt-1" style="color: var(--text-tertiary);">Keep Starlight up to date</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Current Version Info -->
+                                <div class="mb-4 p-3 rounded-lg" style="background: var(--bg-tertiary);">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm font-medium" style="color: var(--text-secondary);">Current Version:</span>
+                                        <span class="text-sm font-mono" style="color: var(--text-primary);" id="current-version">Loading...</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm font-medium" style="color: var(--text-secondary);">Last Checked:</span>
+                                        <span class="text-sm" style="color: var(--text-primary);" id="last-checked">Never</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Update Status -->
+                                <div id="update-status-container" class="mb-4">
+                                    <div class="flex items-center justify-between p-3 rounded-lg" style="background: var(--bg-tertiary);">
+                                        <div class="flex items-center">
+                                            <svg class="w-5 h-5 mr-2" style="color: var(--text-secondary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            <span id="update-status-text" style="color: var(--text-primary);">Checking for updates...</span>
+                                        </div>
+                                        <button onclick="checkForUpdates()" class="text-sm px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white transition duration-150">
+                                            Check Now
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Update Available Section (hidden by default) -->
+                                <div id="update-available-section" class="hidden mb-4">
+                                    <div class="p-4 rounded-lg border-2 border-green-500" style="background: var(--bg-tertiary);">
+                                        <div class="flex items-start justify-between mb-3">
+                                            <div class="flex items-center">
+                                                <svg class="w-6 h-6 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                <div>
+                                                    <h4 class="font-semibold" style="color: var(--text-primary);">Update Available</h4>
+                                                    <p class="text-sm" style="color: var(--text-tertiary);" id="update-info-text">A new version is available</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button onclick="triggerUpdate()" id="update-now-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 flex items-center justify-center">
+                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                            </svg>
+                                            Update Now
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Update Progress (hidden by default) -->
+                                <div id="update-progress-section" class="hidden mb-4">
+                                    <div class="p-4 rounded-lg" style="background: var(--bg-tertiary);">
+                                        <div class="flex items-center mb-2">
+                                            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600 mr-3"></div>
+                                            <span style="color: var(--text-primary);" id="update-progress-text">Installing update...</span>
+                                        </div>
+                                        <p class="text-sm mt-2" style="color: var(--text-tertiary);">Please do not close this window or restart the system.</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Auto-Update Toggle -->
+                                <div class="settings-option">
+                                    <div>
+                                        <h4 class="font-medium" style="color: var(--text-primary);">Automatic Updates</h4>
+                                        <p class="text-sm" style="color: var(--text-tertiary);">Automatically install updates when available</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="auto-update-toggle" onchange="toggleAutoUpdate()">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Storage Settings -->
+                            <div class="settings-section admin-subsection">
+                                <div class="flex justify-between items-center mb-4">
+                                    <div>
+                                        <h3 class="text-lg font-semibold" style="color: var(--text-primary);">Storage Configuration</h3>
+                                        <p class="text-sm mt-1" style="color: var(--text-tertiary);">Configure VM and ISO storage paths</p>
+                                    </div>
+                                    <button id="storage-refresh-btn" onclick="refreshStorageInfo()" class="flex items-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded-lg transition duration-150">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <!-- Storage Path Configuration -->
+                                <div class="space-y-4 mb-6">
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">VM Storage Path</label>
+                                        <input type="text" id="storage-vm-path" 
+                                               class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                               style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" 
+                                               placeholder="/var/lib/libvirt/images">
+                                        <p class="text-xs mt-1" style="color: var(--text-tertiary);">Path where VM disk images are stored</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">ISO Storage Path</label>
+                                        <input type="text" id="storage-iso-path" 
+                                               class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                               style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" 
+                                               placeholder="/var/lib/libvirt/isos">
+                                        <p class="text-xs mt-1" style="color: var(--text-tertiary);">Path where ISO files are stored</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Default Pool Name</label>
+                                        <input type="text" id="storage-pool-name" 
+                                               class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                               style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" 
+                                               placeholder="default">
+                                        <p class="text-xs mt-1" style="color: var(--text-tertiary);">Libvirt storage pool name</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Storage Information -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div class="p-4 rounded-lg" style="background-color: var(--bg-tertiary);">
+                                        <h4 class="font-semibold mb-2" style="color: var(--text-primary);">VM Storage</h4>
+                                        <div id="storage-vm-info">
+                                            <p class="text-sm" style="color: var(--text-tertiary);">Loading...</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="p-4 rounded-lg" style="background-color: var(--bg-tertiary);">
+                                        <h4 class="font-semibold mb-2" style="color: var(--text-primary);">ISO Storage</h4>
+                                        <div id="storage-iso-info">
+                                            <p class="text-sm" style="color: var(--text-tertiary);">Loading...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Warning and Save Button -->
+                                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4" style="background-color: rgba(254, 243, 199, 0.3); border-color: var(--border-color);">
+                                    <p class="text-sm" style="color: var(--text-primary);">
+                                        <strong>⚠️ Warning:</strong> Changing storage paths will not automatically move existing VM files. You will need to migrate files manually.
+                                    </p>
+                                </div>
+                                
+                                <button onclick="saveStorageConfig()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                                    Save Storage Configuration
+                                </button>
+                            </div>
+                            
+                            <!-- Network Settings -->
+                            <div class="settings-section admin-subsection">
+                                <div class="flex justify-between items-center mb-4">
+                                    <div>
+                                        <h3 class="text-lg font-semibold" style="color: var(--text-primary);">Network Configuration</h3>
+                                        <p class="text-sm mt-1" style="color: var(--text-tertiary);">Configure network settings and DNS servers</p>
+                                    </div>
+                                    <button id="network-refresh-btn" onclick="refreshNetworkStatus()" class="flex items-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded-lg transition duration-150">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <!-- Current Network Status -->
+                                <div class="mb-6 p-4 rounded-lg" style="background-color: var(--bg-tertiary);">
+                                    <h4 class="font-semibold mb-3" style="color: var(--text-primary);">Current Network Status</h4>
+                                    <div id="network-status-info" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <p class="text-sm" style="color: var(--text-tertiary);">Loading...</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Network Mode Selection -->
+                                <div class="space-y-4 mb-6">
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Network Mode</label>
+                                        <select id="network-mode" 
+                                                onchange="toggleStaticNetworkFields()"
+                                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                                style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);">
+                                            <option value="dhcp">DHCP (Automatic)</option>
+                                            <option value="static">Static IP</option>
+                                        </select>
+                                        <p class="text-xs mt-1" style="color: var(--text-tertiary);">Choose DHCP for automatic configuration or Static for manual IP settings</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Hostname</label>
+                                        <input type="text" id="network-hostname" 
+                                               class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                               style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" 
+                                               placeholder="starlight-server">
+                                        <p class="text-xs mt-1" style="color: var(--text-tertiary);">System hostname (letters, numbers, and hyphens only)</p>
+                                    </div>
+                                    
+                                    <!-- Static IP Fields (hidden by default) -->
+                                    <div id="static-network-fields" class="hidden space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">IP Address</label>
+                                            <input type="text" id="network-ip" 
+                                                   class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                                   style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" 
+                                                   placeholder="192.168.1.100">
+                                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">Static IP address for this server</p>
+                                        </div>
+                                        
+                                        <div>
+                                            <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Netmask</label>
+                                            <input type="text" id="network-netmask" 
+                                                   class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                                   style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" 
+                                                   placeholder="255.255.255.0">
+                                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">Network subnet mask</p>
+                                        </div>
+                                        
+                                        <div>
+                                            <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Gateway</label>
+                                            <input type="text" id="network-gateway" 
+                                                   class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                                   style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" 
+                                                   placeholder="192.168.1.1">
+                                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">Default gateway address</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- DNS Settings (always visible) -->
+                                    <div class="border-t pt-4 mt-4" style="border-color: var(--border-color);">
+                                        <h4 class="font-medium mb-3" style="color: var(--text-primary);">DNS Servers</h4>
+                                        
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Primary DNS</label>
+                                                <input type="text" id="network-dns-primary" 
+                                                       class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                                       style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" 
+                                                       placeholder="8.8.8.8">
+                                                <p class="text-xs mt-1" style="color: var(--text-tertiary);">Primary DNS server</p>
+                                            </div>
+                                            
+                                            <div>
+                                                <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Secondary DNS</label>
+                                                <input type="text" id="network-dns-secondary" 
+                                                       class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                                       style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" 
+                                                       placeholder="1.1.1.1">
+                                                <p class="text-xs mt-1" style="color: var(--text-tertiary);">Secondary DNS server (fallback)</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Warning Notice -->
+                                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4" style="background-color: rgba(254, 243, 199, 0.3); border-color: var(--border-color);">
+                                    <p class="text-sm" style="color: var(--text-primary);">
+                                        <strong>⚠️ Note:</strong> Network changes are saved to configuration. Applying static IP settings requires a system restart to take effect.
+                                    </p>
+                                </div>
+                                
+                                <button onclick="saveNetworkConfig()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                                    Save Network Configuration
+                                </button>
+                            </div>
+                            
+                            <!-- Repository Management Setting -->
+                            <div class="settings-section admin-subsection">
+                                <div class="flex justify-between items-center mb-4">
+                                    <div>
+                                        <h3 class="text-lg font-semibold" style="color: var(--text-primary);">Repository Management</h3>
+                                        <p class="text-sm mt-1" style="color: var(--text-tertiary);">Manage VM template repositories</p>
+                                    </div>
+                                    <button onclick="showAddRepositoryModal()" class="flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                        </svg>
+                                        Add Repository
+                                    </button>
+                                </div>
+                                <div id="repositories-list" class="space-y-4">
+                                    <p class="text-center" style="color: var(--text-tertiary);">Loading repositories...</p>
+                                </div>
+                            </div>
+
+                            <!-- User Management Setting -->
+                            <div class="settings-section admin-subsection" id="user-management-section">
+                                <div class="flex justify-between items-center mb-4">
+                                    <div>
+                                        <h3 class="text-lg font-semibold" style="color: var(--text-primary);">User Management</h3>
+                                        <p class="text-sm mt-1" style="color: var(--text-tertiary);">Manage system users</p>
+                                    </div>
+                                    <button onclick="showCreateUserModal()" class="flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                        </svg>
+                                        Add User
+                                    </button>
+                                </div>
+                                <div id="settings-users-list" class="space-y-4">
+                                    <p class="text-center" style="color: var(--text-tertiary);">Loading users...</p>
+                                </div>
+                            </div>
+
+                            <!-- Host Console Section (Root only) -->
+                            <div id="host-console-section" class="settings-section admin-subsection hidden">
+                                <div class="flex justify-between items-center mb-4">
+                                    <div>
+                                        <h3 class="text-lg font-semibold" style="color: var(--text-primary);">Host Console</h3>
+                                        <p class="text-sm mt-1" style="color: var(--text-tertiary);">Direct terminal access to the host system</p>
+                                    </div>
+                                    <button id="open-host-console-btn" onclick="launchHostTerminal()" class="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                        Open Host Console
+                                    </button>
+                                </div>
+                                
+                                <!-- Host Terminal Viewer (hidden by default) -->
+                                <div id="host-terminal-viewer" class="hidden">
+                                    <div id="host-terminal-header" style="background: var(--card-bg); border: 1px solid var(--border-color); padding: 1rem; border-radius: 0.5rem 0.5rem 0 0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0;">
+                                        <div class="flex items-center">
+                                            <h3 class="text-lg font-semibold mr-4" style="color: var(--text-primary);">Host Console</h3>
+                                            <span id="host-terminal-status" class="text-xs font-semibold px-2 py-1 rounded-full vnc-status-info">Ready</span>
+                                        </div>
+                                        <button onclick="closeHostTerminal()" class="text-sm bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition duration-150 font-semibold">
+                                            Close Console
+                                        </button>
+                                    </div>
+                                    <div id="host-terminal-container" style="background: #000; border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 0.5rem 0.5rem; padding: 0.5rem; height: 500px;">
+                                        <!-- xterm.js terminal will be inserted here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Keys Page -->
+                <div id="page-api-keys" class="page-view">
+                    <div class="settings-section">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 class="text-xl font-semibold" style="color: var(--text-primary);">API Keys</h3>
+                                <p class="text-sm mt-1" style="color: var(--text-tertiary);">Manage API keys for programmatic access</p>
+                            </div>
+                            <button onclick="showCreateApiKeyModal()" class="flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Create API Key
+                            </button>
+                        </div>
+                        <div id="api-keys-list" class="space-y-4">
+                            <p class="text-center" style="color: var(--text-tertiary);">Loading API keys...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Management Page -->
+                <div id="page-user-management" class="page-view">
+                    <div class="settings-section">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 class="text-xl font-semibold" style="color: var(--text-primary);">User Management</h3>
+                                <p class="text-sm mt-1" style="color: var(--text-tertiary);">Manage system users (Admin only)</p>
+                            </div>
+                            <button onclick="showCreateUserModal()" class="flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Create User
+                            </button>
+                        </div>
+                        <div id="users-list" class="space-y-4">
+                            <p class="text-center" style="color: var(--text-tertiary);">Loading users...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal-overlay" style="display: flex;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="text-center mb-6">
+                <h1 class="text-3xl font-bold mb-2" style="color: var(--text-primary);">⭐ Starlight</h1>
+                <p class="text-sm" style="color: var(--text-secondary);">Sign in to continue</p>
+            </div>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Username</label>
+                    <input type="text" id="login-username" required autocomplete="username" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" placeholder="Enter username">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Password</label>
+                    <input type="password" id="login-password" required autocomplete="current-password" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" placeholder="Enter password">
+                </div>
+                <div id="login-error" class="hidden text-red-600 text-sm"></div>
+                <button type="submit" id="login-submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150">
+                    Sign In
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Confirmation Modal Structure -->
+    <div id="confirmation-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-xl font-bold mb-3" style="color: var(--text-primary);">Confirm Action</h3>
+            <p id="modal-message" class="mb-6" style="color: var(--text-secondary);">Are you sure you want to perform this action?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="modal-cancel" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-150">
+                    Cancel
+                </button>
+                <button id="modal-confirm" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Repository Modal -->
+    <div id="add-repository-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <h3 class="text-xl font-bold mb-4" style="color: var(--text-primary);">Add New Repository</h3>
+            <form id="add-repo-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Repository ID</label>
+                    <input type="text" id="repo-id" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" placeholder="my-repo">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Repository Name</label>
+                    <input type="text" id="repo-name" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" placeholder="My Repository">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Repository URL</label>
+                    <input type="url" id="repo-url" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" placeholder="https://example.com/repo.json">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Description</label>
+                    <textarea id="repo-description" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" rows="2" placeholder="Optional description"></textarea>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="repo-enabled" checked class="mr-2">
+                    <label class="text-sm" style="color: var(--text-secondary);">Enable this repository</label>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="hideAddRepositoryModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-150">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                        Add Repository
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- VM Settings Modal -->
+    <div id="vm-settings-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4 flex-shrink-0" style="color: var(--text-primary);">
+                <span class="mr-2">⚙️</span>
+                VM Settings: <span id="settings-vm-name"></span>
+            </h3>
+            
+            <div class="flex-1 overflow-y-auto px-1">
+                <!-- Basic Settings Section -->
+                <div class="settings-section">
+                    <h4 class="text-lg font-semibold mb-3" style="color: var(--text-primary);">Basic Configuration</h4>
+                    
+                    <div class="settings-grid">
+                        <!-- VM Name -->
+                        <div>
+                            <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary);">
+                                VM Name
+                            </label>
+                            <input type="text" id="settings-vm-name-input" 
+                                   class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                   style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);"
+                                   placeholder="my-virtual-machine">
+                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">A friendly name for your VM</p>
+                        </div>
+                        
+                        <!-- VM Description -->
+                        <div class="settings-grid-full">
+                            <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary);">
+                                Description (Optional)
+                            </label>
+                            <textarea id="settings-vm-description" rows="2"
+                                      class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                      style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);"
+                                      placeholder="Windows 11 Development Environment"></textarea>
+                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">Add notes about what this VM is used for</p>
+                        </div>
+                        
+                        <!-- RAM Setting -->
+                        <div>
+                            <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary);">
+                                Memory (RAM)
+                            </label>
+                            <div class="flex items-center space-x-3">
+                                <input type="range" id="settings-ram" min="0.5" max="32" step="0.5" 
+                                       class="flex-1" 
+                                       oninput="updateRamDisplay(this.value)">
+                                <input type="number" id="settings-ram-input" min="0.5" max="32" step="0.5"
+                                       class="w-24 px-2 py-1 border rounded-md text-sm text-center"
+                                       style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);"
+                                       oninput="updateRamFromInput(this.value)">
+                                <span class="text-sm font-semibold" style="color: var(--text-primary);">GB</span>
+                            </div>
+                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">Recommended: 2-4 GB</p>
+                        </div>
+                        
+                        <!-- vCPU Setting -->
+                        <div>
+                            <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary);">
+                                Virtual CPUs (vCPUs)
+                            </label>
+                            <div class="flex items-center space-x-3">
+                                <input type="range" id="settings-vcpus" min="1" max="16" step="1" 
+                                       class="flex-1"
+                                       oninput="updateVcpuDisplay(this.value)">
+                                <input type="number" id="settings-vcpus-input" min="1" max="16" step="1"
+                                       class="w-24 px-2 py-1 border rounded-md text-sm text-center"
+                                       style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);"
+                                       oninput="updateVcpuFromInput(this.value)">
+                                <span class="text-sm font-semibold" style="color: var(--text-primary);">cores</span>
+                            </div>
+                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">Recommended: 2-4 cores</p>
+                        </div>
+                        
+                        <!-- Disk Size -->
+                        <div class="settings-grid-full">
+                            <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary);">
+                                Disk Size
+                            </label>
+                            <div class="flex items-center space-x-3">
+                                <input type="range" id="settings-disk" min="1" max="500" step="1" 
+                                       class="flex-1"
+                                       oninput="updateDiskDisplay(this.value)">
+                                <input type="number" id="settings-disk-input" min="1" max="500" step="1"
+                                       class="w-24 px-2 py-1 border rounded-md text-sm text-center"
+                                       style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);"
+                                       oninput="updateDiskFromInput(this.value)">
+                                <span class="text-sm font-semibold" style="color: var(--text-primary);">GB</span>
+                            </div>
+                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">Disk can only be expanded, not shrunk. VM must be shut down.</p>
+                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">Current: <span id="current-disk-size">Loading...</span></p>
+                        </div>
+                    </div>
+                </div>
+            
+                <!-- Advanced Settings Section (Expandable) -->
+                <div class="settings-section">
+                    <button onclick="toggleAdvancedSettings()" 
+                            class="w-full flex items-center justify-between text-lg font-semibold mb-3 hover:text-indigo-600 transition" 
+                            style="color: var(--text-primary);">
+                        <span>Advanced Configuration</span>
+                        <svg id="advanced-toggle-icon" class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    
+                    <div id="advanced-settings" class="hidden settings-grid">
+                        <!-- Auto-start on Boot -->
+                        <div class="flex items-center justify-between p-3 rounded-lg" style="background-color: var(--bg-tertiary);">
+                            <div>
+                                <h5 class="font-medium" style="color: var(--text-primary);">Auto-start on Boot</h5>
+                                <p class="text-xs mt-1" style="color: var(--text-tertiary);">Start this VM automatically when the host system boots</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="settings-autostart">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <!-- Audio Device -->
+                        <div class="flex items-center justify-between p-3 rounded-lg" style="background-color: var(--bg-tertiary);">
+                            <div>
+                                <h5 class="font-medium" style="color: var(--text-primary);">Audio Device</h5>
+                                <p class="text-xs mt-1" style="color: var(--text-tertiary);">Enable sound output for this VM</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="settings-audio" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <!-- Graphics Memory -->
+                        <div class="settings-grid-full">
+                            <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary);">
+                                Graphics Memory (Video RAM)
+                            </label>
+                            <div class="flex items-center space-x-3">
+                                <input type="range" id="settings-vram" min="16" max="256" step="16" 
+                                       class="flex-1"
+                                       oninput="updateVramDisplay(this.value)">
+                                <input type="number" id="settings-vram-input" min="16" max="256" step="16"
+                                       class="w-24 px-2 py-1 border rounded-md text-sm text-center"
+                                       style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);"
+                                       oninput="updateVramFromInput(this.value)">
+                                <span class="text-sm font-semibold" style="color: var(--text-primary);">MB</span>
+                            </div>
+                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">Higher values improve graphics performance for GUI-heavy operating systems</p>
+                        </div>
+                        
+                        <!-- Display Resolution -->
+                        <div>
+                            <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary);">
+                                Display Resolution Hint
+                            </label>
+                            <select id="settings-resolution" 
+                                    class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                    style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);">
+                                <option value="1920x1080">1920x1080 (Full HD)</option>
+                                <option value="1680x1050">1680x1050 (WSXGA+)</option>
+                                <option value="1600x900">1600x900 (HD+)</option>
+                                <option value="1440x900">1440x900 (WXGA+)</option>
+                                <option value="1366x768">1366x768 (WXGA)</option>
+                                <option value="1280x1024">1280x1024 (SXGA)</option>
+                                <option value="1280x720">1280x720 (HD)</option>
+                                <option value="1024x768">1024x768 (XGA)</option>
+                            </select>
+                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">Suggested resolution for the guest OS (requires guest tools)</p>
+                        </div>
+                        
+                        <!-- Boot Order -->
+                        <div>
+                            <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary);">
+                                Boot Order
+                            </label>
+                            <select id="settings-boot-order" 
+                                    class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                    style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);">
+                                <option value="hd">Hard Disk</option>
+                                <option value="cdrom">CD-ROM</option>
+                                <option value="cdrom-hd">CD-ROM, then Hard Disk</option>
+                            </select>
+                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">Boot device priority order</p>
+                        </div>
+                        
+                        <!-- VNC Port (Read-only) -->
+                        <div>
+                            <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary);">
+                                VNC Port
+                            </label>
+                            <input type="text" id="settings-vnc-port" readonly 
+                                   class="w-full px-3 py-2 border rounded-md bg-gray-100" 
+                                   style="background-color: var(--bg-tertiary); color: var(--text-secondary); border-color: var(--border-color);">
+                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">Automatically assigned when VM is running</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Warning Notice and Buttons - Fixed at Bottom -->
+            <div class="flex-shrink-0 pt-4 mt-4 border-t" style="border-color: var(--border-color);">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4" style="background-color: rgba(254, 243, 199, 0.3); border-color: var(--border-color);">
+                    <p class="text-sm" style="color: var(--text-primary);">
+                        <strong>⚠️ Note:</strong> Changes to RAM and vCPU settings require the VM to be powered off. The VM will need to be restarted for changes to take effect.
+                    </p>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3">
+                    <button onclick="hideVmSettings()" 
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-6 rounded-lg transition duration-150">
+                        Close
+                    </button>
+                    <button id="save-vm-settings-btn" onclick="saveVmSettings()" 
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-150">
+                        Apply Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Detail Modal -->
+    <div id="app-detail-modal" class="modal-overlay hidden app-detail-modal">
+        <div class="modal-content rounded-xl shadow-2xl">
+            <div class="modal-header border-b p-6 rounded-t-xl flex justify-between items-start">
+                <div class="flex items-center space-x-4">
+                    <img id="detail-app-icon" src="" alt="" class="app-icon w-16 h-16">
+                    <div>
+                        <h3 id="detail-app-name" class="text-2xl font-bold" style="color: var(--text-primary);"></h3>
+                        <p id="detail-app-summary" class="text-sm" style="color: var(--text-secondary);"></p>
+                    </div>
+                </div>
+                <button onclick="hideAppDetail()" class="text-2xl leading-none transition" style="color: var(--text-tertiary);" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-tertiary)'">
+                    &times;
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- App Specs -->
+                <div id="detail-app-specs" class="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                
+                <!-- Markdown Description -->
+                <div id="detail-app-description" class="markdown-content prose max-w-none mb-6"></div>
+                
+                <!-- Image Source Info -->
+                <div id="detail-image-source" class="info-box rounded-lg p-4 mb-6"></div>
+                
+                <!-- Tags -->
+                <div id="detail-app-tags" class="mb-6"></div>
+            </div>
+            
+            <div class="modal-footer border-t p-6 rounded-b-xl flex justify-end space-x-3">
+                <button onclick="hideAppDetail()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-6 rounded-lg transition duration-150">
+                    Close
+                </button>
+                <button id="detail-deploy-btn" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-150">
+                    Deploy VM
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create API Key Modal -->
+    <div id="create-api-key-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <h3 class="text-xl font-bold mb-4" style="color: var(--text-primary);">Create API Key</h3>
+            <form id="create-api-key-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Name</label>
+                    <input type="text" id="api-key-name" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" placeholder="My API Key">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Description</label>
+                    <textarea id="api-key-description" rows="2" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" placeholder="For CI/CD pipeline"></textarea>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="hideCreateApiKeyModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-150">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                        Create Key
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Show API Key Modal -->
+    <div id="show-api-key-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <h3 class="text-xl font-bold mb-4 text-green-600">API Key Created Successfully!</h3>
+            <div class="mb-4 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+                <p class="text-sm font-semibold text-yellow-800 mb-2">⚠️ Save this key now - it won't be shown again!</p>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Your API Key:</label>
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="new-api-key-value" readonly class="flex-1 px-3 py-2 border rounded-md font-mono text-sm" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);">
+                    <button onclick="copyApiKey()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                        Copy
+                    </button>
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <button onclick="hideShowApiKeyModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create User Modal -->
+    <div id="create-user-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <h3 class="text-xl font-bold mb-4" style="color: var(--text-primary);">Create User</h3>
+            <form id="create-user-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Username</label>
+                    <input type="text" id="new-username" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" placeholder="username">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Password</label>
+                    <input type="password" id="new-password" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" placeholder="********">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Full Name</label>
+                    <input type="text" id="new-fullname" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" placeholder="John Doe">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Role</label>
+                    <select id="new-user-role" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);">
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="hideCreateUserModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-150">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                        Create User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="change-password-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <h3 class="text-xl font-bold mb-4" style="color: var(--text-primary);">Change Password</h3>
+            <form id="change-password-form" class="space-y-4">
+                <input type="hidden" id="change-password-username">
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Username</label>
+                    <input type="text" id="change-password-username-display" readonly class="w-full px-3 py-2 border rounded-md" style="background-color: var(--bg-secondary); color: var(--text-secondary); border-color: var(--border-color);">
+                </div>
+                <div id="modal-current-password-container" class="hidden">
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Current Password</label>
+                    <input type="password" id="change-password-current" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" placeholder="********">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">New Password</label>
+                    <input type="password" id="change-password-new" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" placeholder="********">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Confirm Password</label>
+                    <input type="password" id="change-password-confirm" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color);" placeholder="********">
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="hideChangePasswordModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-150">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                        Change Password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+
+    <!-- Modular JavaScript Files -->
+    <!-- Load in dependency order -->
+    <script src="/js/config.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/vm-manager.js"></script>
+    <script src="/js/vnc-viewer.js"></script>
+    <script src="/js/terminal.js"></script>
+    <script src="/js/host-terminal.js"></script>
+    <script src="/js/console-manager.js"></script>
+    <script src="/js/appstore.js"></script>
+    <script src="/js/settings.js"></script>
+    <script src="/js/storage-settings.js"></script>
+    <script src="/js/network-settings.js"></script>
+    <script src="/js/system.js"></script>
+    <script src="/js/api-keys.js"></script>
+    <script src="/js/user-management.js"></script>
+    <script src="/js/main.js"></script>
+</body>
+</html>

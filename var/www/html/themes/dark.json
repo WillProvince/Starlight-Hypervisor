@@ -1,0 +1,18 @@
+{
+  "name": "Dark",
+  "id": "dark",
+  "variables": {
+    "bg-primary": "#0f172a",
+    "bg-secondary": "#1e293b",
+    "bg-tertiary": "#334155",
+    "bg-card": "#1e293b",
+    "bg-sidebar": "linear-gradient(180deg, #0f172a 0%, #020617 100%)",
+    "text-primary": "#f1f5f9",
+    "text-secondary": "#cbd5e1",
+    "text-tertiary": "#94a3b8",
+    "text-sidebar": "#f1f5f9",
+    "border-color": "#334155",
+    "shadow-sm": "0 2px 4px rgba(0, 0, 0, 0.3)",
+    "shadow-md": "0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)"
+  }
+}

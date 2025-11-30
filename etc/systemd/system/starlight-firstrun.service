@@ -1,0 +1,16 @@
+[Unit]
+Description=Starlight First-Run Wizard Setup
+Documentation=https://github.com/starlight
+After=network.target nginx.service
+ConditionPathExists=/etc/starlight/.needs-firstrun
+ConditionPathExists=!/etc/starlight/.firstrun-complete
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/scripts/firstrun-service.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

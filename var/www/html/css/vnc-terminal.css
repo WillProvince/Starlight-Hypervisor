@@ -1,0 +1,335 @@
+/**
+ * VNC and Terminal Viewer Styles
+ * Styles specific to VNC viewer and terminal emulator components
+ */
+
+/* Unified Console Viewer */
+#console-viewer {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] #console-viewer {
+    background-color: #1e3a5f;
+    border-color: #334155;
+}
+
+/* Console Tab Bar */
+.console-tab-bar {
+    background: var(--bg-secondary);
+    padding: 0.5rem 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .console-tab-bar {
+    background: var(--bg-secondary);
+    border-color: #334155;
+}
+
+.console-tabs-container {
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+}
+
+/* Individual Console Tab */
+.console-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    border-radius: 0.5rem 0.5rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.console-tab:hover {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.console-tab.active {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+    border-bottom: 1px solid var(--bg-card);
+    margin-bottom: -1px;
+}
+
+[data-theme="dark"] .console-tab {
+    background: var(--bg-tertiary);
+    border-color: #475569;
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .console-tab:hover {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .console-tab.active {
+    background: #1e3a5f;
+    border-color: #475569;
+    border-bottom-color: #1e3a5f;
+}
+
+.console-tab-label {
+    flex: 1;
+}
+
+.console-tab-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 0.25rem;
+    color: inherit;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.console-tab-close:hover {
+    background: rgba(255, 0, 0, 0.2);
+    color: #ff4444;
+}
+
+/* Console Area */
+.console-area {
+    position: relative;
+}
+
+/* Console Content Containers */
+.console-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.console-content.hidden {
+    display: none;
+}
+
+/* Console Header */
+.console-header {
+    background: var(--bg-tertiary);
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .console-header {
+    background-color: #0f172a;
+    border-color: #334155;
+}
+
+.console-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-right: 1rem;
+    color: var(--text-primary);
+}
+
+.console-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+}
+
+.console-status-info {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.console-status-connecting {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.console-status-connected {
+    background-color: #10b981;
+    color: white;
+}
+
+.console-status-error {
+    background-color: #ef4444;
+    color: white;
+}
+
+/* VNC Canvas Container */
+.console-canvas-container {
+    background: #1a1a1a;
+    min-height: 600px;
+    position: relative;
+    overflow: auto;
+    padding: 1rem;
+}
+
+.console-canvas-container canvas {
+    display: block !important;
+    visibility: visible !important;
+    margin: 0 auto;
+}
+
+/* Terminal Container */
+.console-terminal-container {
+    background: #000;
+    padding: 0.5rem;
+    height: 600px;
+}
+
+/* Console Controls */
+.console-controls {
+    padding: 1rem;
+    background-color: var(--bg-tertiary);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+[data-theme="dark"] .console-controls {
+    background-color: #0f172a;
+    border-color: #334155;
+}
+
+.console-controls-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.console-info {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Console Button Styles */
+.console-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: white;
+}
+
+.console-btn-green {
+    background-color: #10b981;
+}
+
+.console-btn-green:hover {
+    background-color: #059669;
+}
+
+.console-btn-yellow {
+    background-color: #f59e0b;
+}
+
+.console-btn-yellow:hover {
+    background-color: #d97706;
+}
+
+.console-btn-red {
+    background-color: #ef4444;
+}
+
+.console-btn-red:hover {
+    background-color: #dc2626;
+}
+
+.console-btn-dark-red {
+    background-color: #b91c1c;
+}
+
+.console-btn-dark-red:hover {
+    background-color: #991b1b;
+}
+
+.console-btn-indigo {
+    background-color: #6366f1;
+}
+
+.console-btn-indigo:hover {
+    background-color: #4f46e5;
+}
+
+/* Legacy Inline VNC Viewer */
+#vnc-viewer-inline {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] #vnc-viewer-inline {
+    background-color: #1e3a5f;
+    border-color: #334155;
+}
+
+#vnc-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#vnc-canvas-container {
+    background: #1a1a1a;
+    min-height: 600px;
+    position: relative;
+    overflow: auto;
+    padding: 1rem;
+}
+
+/* Style the canvas that RFB creates */
+#vnc-canvas-container canvas {
+    display: block !important;
+    visibility: visible !important;
+    margin: 0 auto;
+}
+
+#vnc-controls {
+    padding: 1rem;
+    background-color: var(--bg-tertiary);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+[data-theme="dark"] #vnc-controls {
+    background-color: #0f172a;
+    border-color: #334155;
+}

@@ -1,0 +1,119 @@
+# Starlight Web Frontend Configuration
+#
+# HTTP to HTTPS Redirect
+server {
+	listen 80 default_server;
+	listen [::]:80 default_server;
+	server_name _;
+	
+	# Redirect all HTTP traffic to HTTPS
+	return 301 https://$host$request_uri;
+}
+
+# HTTPS Server
+server {
+	listen 443 ssl default_server;
+	listen [::]:443 ssl default_server;
+
+	root /var/www/html;
+
+	index index.html;
+
+	server_name _;
+
+	include snippets/self-signed.conf;
+
+	location / {
+		# First attempt to serve request as file, then
+		# as directory, then fall back to displaying a 404.
+		try_files $uri $uri/ =404;
+	}
+    
+    location ~ ^/vnc-proxy/(\d+)$ {
+        # Proxy to Python backend WebSocket handler (not directly to QEMU!)
+        # The Python backend will bridge WebSocket to TCP for QEMU
+        proxy_pass http://127.0.0.1:5000;
+
+        # Required headers for WebSocket upgrade
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # Standard proxy headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Timeout settings for long-lived VNC sessions
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_connect_timeout 10s; 
+        
+        # Disable buffering for real-time VNC
+        proxy_buffering off;
+    }
+
+    # LXC Console WebSocket proxy
+    location ~ ^/lxc-console/(.+)$ {
+        proxy_pass http://127.0.0.1:5000;
+
+        # Required headers for WebSocket upgrade
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # Standard proxy headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Timeout settings for long-lived terminal sessions
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_connect_timeout 10s;
+
+        # Disable buffering for real-time terminal
+        proxy_buffering off;
+    }
+
+    # Host Console WebSocket proxy (root only)
+    location /host-console {
+        proxy_pass http://127.0.0.1:5000;
+
+        # Required headers for WebSocket upgrade
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # Standard proxy headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Timeout settings for long-lived terminal sessions
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_connect_timeout 10s;
+
+        # Disable buffering for real-time terminal
+        proxy_buffering off;
+    }
+
+    # Python Backend Connection
+    location /api/ {
+        # This is the address of the running Flask/Gunicorn server
+        proxy_pass http://127.0.0.1:5000;
+
+        # Standard proxy headers for preserving client information
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Disable buffering to ensure real-time API responsiveness
+        proxy_buffering off;
+    }
+}
