@@ -21,8 +21,7 @@ Download a release ISO, burn it to a disk or boot it from USB. Follow on-screen 
 
 **Access the interface:**
 - Open your web browser and navigate to `https://your-server-ip/`
-- Log in with your system username and password
-- The first user in the `starlight-users` group will have admin privileges
+- Follow on-screen prompts to reset the root user's password, create a new user, and set network settings.
 
 ---
 
