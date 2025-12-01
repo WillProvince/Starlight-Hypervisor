@@ -12,16 +12,17 @@ import logging
 import asyncio
 import subprocess
 import stat
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from ..config import GIT_REPO_PATH
 from ..config_loader import (
     VERSION_FILE_PATH,
     get_service_name,
     get_updater_config,
     save_updater_config,
+    CONFIG_BASE_DIR,
 )
 from ..utils.libvirt_connection import get_connection
 from .backup import load_update_config, save_update_config, create_backup
@@ -37,17 +38,18 @@ logger = logging.getLogger(__name__)
 UPDATE_SCRIPT_PATH = 'scripts/update.sh'
 POST_UPDATE_DIR = 'scripts/post-update.d'
 
+# Dedicated directory for cloning/updating the repository
+UPDATER_TMP_DIR = os.path.join(CONFIG_BASE_DIR, 'updater_tmp')
+
 
 def get_repo_path() -> str:
     """
-    Get the git repository path from configuration or default.
+    Get the git repository path for updates.
     
     Returns:
-        str: Path to the git repository
+        str: Path to the git repository (updater temp directory)
     """
-    # GIT_REPO_PATH is calculated from the module location
-    # This provides a fallback that can be overridden by config
-    return GIT_REPO_PATH
+    return UPDATER_TMP_DIR
 
 
 def get_repo_url() -> str:
@@ -72,18 +74,119 @@ def get_repo_branch() -> str:
     return config.get('branch', 'main')
 
 
-def validate_git_repo():
-    """Validates that the repository path points to a valid git repository."""
+def validate_git_repo(repo_path: Optional[str] = None) -> bool:
+    """
+    Validates that the repository path points to a valid git repository.
+    
+    Args:
+        repo_path: Optional path to check. Uses default if not provided.
+        
+    Returns:
+        bool: True if valid git repository
+    """
     try:
-        repo_path = get_repo_path()
+        path = repo_path or get_repo_path()
+        if not os.path.exists(path):
+            return False
         result = subprocess.run(
             ['git', 'rev-parse', '--git-dir'],
-            cwd=repo_path,
+            cwd=path,
             capture_output=True,
             timeout=5
         )
         return result.returncode == 0
     except Exception:
+        return False
+
+
+def clean_updater_tmp() -> bool:
+    """
+    Clean the updater temporary directory.
+    
+    Returns:
+        bool: True if cleaned successfully
+    """
+    try:
+        if os.path.exists(UPDATER_TMP_DIR):
+            logger.info(f"Cleaning updater temp directory: {UPDATER_TMP_DIR}")
+            shutil.rmtree(UPDATER_TMP_DIR)
+        return True
+    except Exception as e:
+        logger.error(f"Failed to clean updater temp directory: {e}")
+        return False
+
+
+def clone_repository() -> bool:
+    """
+    Clone the repository fresh to the updater temp directory.
+    
+    Returns:
+        bool: True if cloned successfully
+    """
+    repo_url = get_repo_url()
+    branch = get_repo_branch()
+    
+    try:
+        # Clean any existing directory first
+        if not clean_updater_tmp():
+            return False
+        
+        # Create parent directory if needed
+        Path(UPDATER_TMP_DIR).parent.mkdir(parents=True, exist_ok=True)
+        
+        # Clone the repository
+        logger.info(f"Cloning repository {repo_url} (branch: {branch}) to {UPDATER_TMP_DIR}")
+        result = subprocess.run(
+            ['git', 'clone', '--branch', branch, '--single-branch', '--depth', '1', repo_url, UPDATER_TMP_DIR],
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+        
+        if result.returncode != 0:
+            logger.error(f"Failed to clone repository: {result.stderr}")
+            return False
+        
+        logger.info("Repository cloned successfully")
+        return True
+        
+    except subprocess.TimeoutExpired:
+        logger.error("Clone operation timed out")
+        return False
+    except Exception as e:
+        logger.error(f"Error cloning repository: {e}")
+        return False
+
+
+def fetch_latest_info() -> bool:
+    """
+    Fetch latest info from remote without cloning (for checking updates).
+    Uses ls-remote to check for updates without a full clone.
+    
+    Returns:
+        bool: True if fetch was successful
+    """
+    repo_url = get_repo_url()
+    branch = get_repo_branch()
+    
+    try:
+        # If we have an existing repo, just fetch
+        if validate_git_repo():
+            logger.info("Fetching latest changes...")
+            result = subprocess.run(
+                ['git', 'fetch', 'origin', branch],
+                cwd=UPDATER_TMP_DIR,
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            return result.returncode == 0
+        
+        # No existing repo - clone it for the first time
+        return clone_repository()
+        
+    except Exception as e:
+        logger.error(f"Error fetching latest info: {e}")
         return False
 
 
@@ -149,70 +252,205 @@ def get_current_version():
         }
 
 
-def check_for_updates():
-    """Checks if updates are available."""
+def _validate_version_structure(version_data: Dict) -> bool:
+    """
+    Validate that version data has the expected structure.
+    
+    Args:
+        version_data: Parsed version dictionary to validate
+        
+    Returns:
+        bool: True if the structure is valid, False otherwise
+    """
+    if not isinstance(version_data, dict):
+        return False
+    
+    # Check for expected fields - at least one of version or commit must exist
+    # and they should be strings
+    version = version_data.get('version')
+    commit = version_data.get('commit')
+    
+    if version is not None and not isinstance(version, str):
+        return False
+    if commit is not None and not isinstance(commit, str):
+        return False
+    
+    # At least one identifier must be present
+    if not version and not commit:
+        return False
+    
+    # Optional fields should be strings if present
+    for field in ['date', 'branch']:
+        value = version_data.get(field)
+        if value is not None and not isinstance(value, str):
+            return False
+    
+    return True
+
+
+def _get_remote_version(repo_path: str, branch: str) -> Optional[Dict]:
+    """
+    Attempt to read and parse the VERSION file from the remote branch.
+    
+    Args:
+        repo_path: Path to the git repository
+        branch: Git branch name
+        
+    Returns:
+        dict: Parsed version info if successful, None otherwise
+    """
     try:
-        # Validate git repository first
-        if not validate_git_repo():
-            logger.error("Repository path does not point to a valid git repository")
+        # Construct the path relative to repo root for git show
+        # VERSION_FILE_PATH is an absolute path like /etc/starlight/version.json
+        # We need to use the repository-relative path instead
+        # The version file in the repo is at etc/starlight/version.json
+        version_file_repo_path = 'etc/starlight/version.json'
+        
+        result = subprocess.run(
+            ['git', 'show', f'origin/{branch}:{version_file_repo_path}'],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if result.returncode == 0 and result.stdout.strip():
+            try:
+                remote_version = json.loads(result.stdout.strip())
+                
+                # Validate the structure of the parsed JSON
+                if not _validate_version_structure(remote_version):
+                    logger.warning("Remote version JSON has invalid structure")
+                    return None
+                
+                logger.debug(f"Successfully read remote version: {remote_version}")
+                return remote_version
+            except json.JSONDecodeError as e:
+                logger.warning(f"Failed to parse remote version JSON: {e}")
+                return None
+        else:
+            logger.debug(f"Could not read remote version file: {result.stderr}")
+            return None
+    except subprocess.TimeoutExpired:
+        logger.warning("Timeout while reading remote version file")
+        return None
+    except Exception as e:
+        logger.warning(f"Error reading remote version file: {e}")
+        return None
+
+
+def _check_version_mismatch(local_version: Dict, remote_version: Dict) -> bool:
+    """
+    Compare local and remote versions to determine if there's a mismatch.
+    
+    Note: This may return True even when commit_count is 0. This can happen when
+    version metadata differs but commits are in sync. This is useful for detecting
+    inconsistent version files or manual version updates.
+    
+    Args:
+        local_version: Local version info dictionary
+        remote_version: Remote version info dictionary
+        
+    Returns:
+        bool: True if versions differ, False otherwise
+    """
+    if not local_version or not remote_version:
+        return False
+    
+    # Get version identifiers, preferring 'version' field over 'commit'
+    # Use None check specifically to handle empty strings properly
+    local_version_field = local_version.get('version')
+    local_commit_field = local_version.get('commit')
+    local_ver = local_version_field if local_version_field else local_commit_field
+    
+    remote_version_field = remote_version.get('version')
+    remote_commit_field = remote_version.get('commit')
+    remote_ver = remote_version_field if remote_version_field else remote_commit_field
+    
+    if local_ver and remote_ver:
+        return local_ver != remote_ver
+    
+    return False
+
+
+def check_for_updates():
+    """
+    Checks if updates are available by comparing local version with remote.
+    
+    This fetches/clones the repository to the updater temp directory and
+    compares versions.
+    """
+    try:
+        # Fetch latest info (will clone if needed)
+        if not fetch_latest_info():
+            logger.error("Failed to fetch latest repository info")
             return None
         
         repo_path = get_repo_path()
         branch = get_repo_branch()
         
-        # Fetch latest changes from remote
-        result = subprocess.run(
-            ['git', 'fetch', 'origin'],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
+        # Get local version from the installed version file
+        local_version = get_current_version()
         
-        if result.returncode != 0:
-            logger.error(f"Failed to fetch updates: {result.stderr}")
-            return None
+        # Get remote version from the cloned/fetched repo
+        remote_version = _get_remote_version(repo_path, branch)
+        version_mismatch = _check_version_mismatch(local_version, remote_version)
         
-        # Check if there are new commits
-        result = subprocess.run(
-            ['git', 'rev-list', '--count', f'HEAD..origin/{branch}'],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+        # Check commit count if we have a valid repo
+        commit_count = 0
+        if validate_git_repo():
+            result = subprocess.run(
+                ['git', 'rev-list', '--count', f'HEAD..origin/{branch}'],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                try:
+                    commit_count = int(result.stdout.strip())
+                except ValueError:
+                    logger.warning(f"Could not parse git commit count: {result.stdout.strip()}")
+                    commit_count = 0
         
-        if result.returncode == 0:
-            commit_count = int(result.stdout.strip())
+        # Determine if updates are available
+        updates_available = commit_count > 0 or version_mismatch
+        
+        if updates_available:
+            # Get the latest commit info
+            log_result = subprocess.run(
+                ['git', 'log', f'origin/{branch}', '-1', '--format=%H|%ci|%s'],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
             
-            if commit_count > 0:
-                # Get the latest commit info
-                log_result = subprocess.run(
-                    ['git', 'log', f'origin/{branch}', '-1', '--format=%H|%ci|%s'],
-                    cwd=repo_path,
-                    capture_output=True,
-                    text=True,
-                    timeout=5
-                )
-                
-                if log_result.returncode == 0:
-                    parts = log_result.stdout.strip().split('|')
-                    return {
-                        'available': True,
-                        'commit_count': commit_count,
-                        'latest_commit': parts[0] if len(parts) > 0 else 'unknown',
-                        'latest_date': parts[1] if len(parts) > 1 else 'unknown',
-                        'latest_message': parts[2] if len(parts) > 2 else 'Update available'
-                    }
+            latest_info = {}
+            if log_result.returncode == 0:
+                parts = log_result.stdout.strip().split('|')
+                latest_info = {
+                    'latest_commit': parts[0] if len(parts) > 0 else 'unknown',
+                    'latest_date': parts[1] if len(parts) > 1 else 'unknown',
+                    'latest_message': parts[2] if len(parts) > 2 else 'Update available',
+                }
             
             return {
-                'available': False,
-                'commit_count': 0,
-                'message': 'System is up to date'
+                'available': True,
+                'commit_count': commit_count,
+                'remote_version': remote_version,
+                'version_mismatch': version_mismatch,
+                **latest_info
             }
-        else:
-            logger.error(f"Failed to check for updates: {result.stderr}")
-            return None
+        
+        return {
+            'available': False,
+            'commit_count': 0,
+            'message': 'System is up to date',
+            'remote_version': remote_version,
+            'version_mismatch': version_mismatch
+        }
+        
     except Exception as e:
         logger.error(f"Error checking for updates: {e}")
         return None
@@ -353,12 +591,12 @@ def perform_update(
     
     This includes:
     1. Creating a backup
-    2. Stashing local changes
-    3. Pulling git changes
-    4. Syncing all files to system locations
+    2. Cleaning the updater temp directory
+    3. Cloning the repository fresh
+    4. Syncing all files to system locations (like the installer)
     5. Running apt update and upgrade
     6. Executing update scripts
-    7. Validating the update
+    7. Updating configuration
     
     Args:
         sync_files: Whether to sync files to system locations (uses config default if None)
@@ -386,7 +624,6 @@ def perform_update(
         run_scripts = updater_config.get('run_update_scripts', True)
     
     repo_path = get_repo_path()
-    branch = get_repo_branch()
     
     result = {
         'success': False,
@@ -411,38 +648,23 @@ def perform_update(
         
         result['backup'] = backup_info
         
-        # Step 2: Stash any local changes (ignore errors if nothing to stash)
-        logger.info("Step 2/7: Stashing local changes...")
-        stash_result = subprocess.run(
-            ['git', 'stash', 'push', '-m', 'Auto-stash before update'],
-            cwd=repo_path,
-            capture_output=True,
-            timeout=10
-        )
-        if stash_result.returncode != 0:
-            logger.debug(f"Git stash returned non-zero: {stash_result.stderr}")
-        
-        # Step 3: Pull latest changes
-        logger.info(f"Step 3/7: Pulling latest changes from git (branch: {branch})...")
-        pull_result = subprocess.run(
-            ['git', 'pull', 'origin', branch],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
-        
-        if pull_result.returncode != 0:
-            logger.error(f"Git pull failed: {pull_result.stderr}")
-            # Attempt rollback
-            rollback_result = rollback_update(backup_info['commit'])
-            result['message'] = f'Git pull failed: {pull_result.stderr}'
+        # Step 2: Clean the updater temp directory
+        logger.info("Step 2/7: Cleaning updater temp directory...")
+        if not clean_updater_tmp():
+            result['message'] = 'Failed to clean updater temp directory'
             result['errors'].append(result['message'])
             return result
         
-        logger.info("Git pull completed successfully")
+        # Step 3: Clone the repository fresh
+        logger.info("Step 3/7: Cloning repository...")
+        if not clone_repository():
+            result['message'] = 'Failed to clone repository'
+            result['errors'].append(result['message'])
+            return result
         
-        # Step 4: Sync all files to system locations
+        logger.info("Repository cloned successfully")
+        
+        # Step 4: Sync all files to system locations (like the installer)
         if sync_files:
             logger.info("Step 4/7: Syncing all files to system locations...")
             try:
@@ -461,18 +683,19 @@ def perform_update(
         
         # Step 5: Run apt update and upgrade
         if update_packages:
-            logger.info("Step 5/7: Running system package updates...")
+            logger.info("Step 5/7: Running system package updates (apt update && apt upgrade)...")
             try:
                 # Run apt update
                 apt_update_result = apt_update()
                 if not apt_update_result['success']:
                     result['errors'].append(f"apt update failed: {apt_update_result['stderr']}")
                 else:
+                    logger.info("apt update completed successfully")
                     # Run apt upgrade
                     apt_upgrade_result = apt_upgrade()
                     if apt_upgrade_result['success']:
                         result['changes']['packages_updated'] = apt_upgrade_result.get('packages_upgraded', 0)
-                        logger.info(f"Package update completed: {result['changes']['packages_updated']} packages updated")
+                        logger.info(f"apt upgrade completed: {result['changes']['packages_updated']} packages updated")
                     else:
                         result['errors'].append(f"apt upgrade failed: {apt_upgrade_result['stderr']}")
             except Exception as e:
@@ -519,15 +742,6 @@ def perform_update(
         result['message'] = str(e)
         result['errors'].append(str(e))
         
-        # Attempt rollback if we have backup info
-        if result['backup']:
-            try:
-                rollback_result = rollback_update(result['backup']['commit'])
-                result['rollback_attempted'] = True
-                result['rollback_success'] = rollback_result.get('success', False)
-            except Exception as rb_error:
-                result['errors'].append(f"Rollback failed: {rb_error}")
-        
         return result
 
 
@@ -549,15 +763,59 @@ def schedule_service_restart(delay_seconds=2):
 
 
 def rollback_update(commit_hash):
-    """Rolls back to a previous commit."""
+    """
+    Rolls back to a previous commit by cloning at that specific commit.
+    
+    Args:
+        commit_hash: The git commit hash to roll back to
+        
+    Returns:
+        dict: Result with success status and message
+    """
     try:
         logger.info(f"Rolling back to commit {commit_hash}")
         
+        repo_url = get_repo_url()
         repo_path = get_repo_path()
         
-        # Reset to the specified commit
+        # Clean and clone at specific commit
+        if not clean_updater_tmp():
+            return {'success': False, 'error': 'Failed to clean updater directory'}
+        
+        # Create parent directory if needed
+        Path(UPDATER_TMP_DIR).parent.mkdir(parents=True, exist_ok=True)
+        
+        # Clone the repository with the specific commit
+        # Use --depth to limit history but we need to fetch the specific commit
+        logger.info(f"Cloning repository for rollback...")
         result = subprocess.run(
-            ['git', 'reset', '--hard', commit_hash],
+            ['git', 'clone', '--single-branch', repo_url, UPDATER_TMP_DIR],
+            capture_output=True,
+            text=True,
+            timeout=180
+        )
+        
+        if result.returncode != 0:
+            logger.error(f"Failed to clone repository for rollback: {result.stderr}")
+            return {'success': False, 'error': result.stderr}
+        
+        # Fetch the specific commit (may not be in shallow history)
+        logger.info(f"Fetching commit {commit_hash}...")
+        fetch_result = subprocess.run(
+            ['git', 'fetch', 'origin', commit_hash],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if fetch_result.returncode != 0:
+            logger.warning(f"Could not fetch specific commit, trying checkout anyway: {fetch_result.stderr}")
+        
+        # Checkout the specific commit
+        logger.info(f"Checking out commit {commit_hash}...")
+        result = subprocess.run(
+            ['git', 'checkout', commit_hash],
             cwd=repo_path,
             capture_output=True,
             text=True,
@@ -565,8 +823,16 @@ def rollback_update(commit_hash):
         )
         
         if result.returncode != 0:
-            logger.error(f"Rollback failed: {result.stderr}")
+            logger.error(f"Failed to checkout commit: {result.stderr}")
             return {'success': False, 'error': result.stderr}
+        
+        # Sync files to system
+        logger.info("Syncing rollback files to system...")
+        sync_result = sync_repo_to_system(repo_path)
+        
+        if not sync_result['success']:
+            logger.error(f"Failed to sync rollback files: {sync_result['errors']}")
+            return {'success': False, 'error': 'Failed to sync files'}
         
         logger.info("Rollback completed successfully")
         return {

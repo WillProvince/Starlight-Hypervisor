@@ -143,12 +143,12 @@ def init_app():
     app.router.add_post('/api/cleanup/orphaned', cleanup_orphaned_containers)
     
     # Updater
-    app.router.add_get('/api/update/status', get_update_status)
-    app.router.add_get('/api/update/check', check_updates)
-    app.router.add_post('/api/update/trigger', trigger_update)
-    app.router.add_post('/api/update/rollback', perform_rollback)
-    app.router.add_put('/api/update/config', update_auto_update_config)
-    app.router.add_get('/api/update/history', get_update_history)
+    app.router.add_get('/api/updates/status', get_update_status)
+    app.router.add_get('/api/updates/check', check_updates)
+    app.router.add_post('/api/updates/trigger', trigger_update)
+    app.router.add_post('/api/updates/rollback', perform_rollback)
+    app.router.add_put('/api/updates/config', update_auto_update_config)
+    app.router.add_get('/api/updates/history', get_update_history)
     
     # System Power Management
     app.router.add_post('/api/system/reboot', reboot_system)
