@@ -198,6 +198,7 @@ Create `/etc/starlight/repositories.json` to add VM template repositories:
   "apps": [
     {
       "name": "Ubuntu 22.04",
+      "category": "vm",
       "description": "Ubuntu Server LTS",
       "xml_url": "https://example.com/ubuntu.xml",
       "vcpus": 2,
