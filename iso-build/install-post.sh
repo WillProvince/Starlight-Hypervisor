@@ -404,6 +404,7 @@ log_success "Added root to libvirt and kvm groups"
 systemctl daemon-reload
 systemctl enable starlight-backend.service
 systemctl enable starlight-firstrun.service
+systemctl enable starlight-update-issue.service
 systemctl enable nginx.service
 systemctl enable libvirtd.service
 log_success "Enabled systemd services"
