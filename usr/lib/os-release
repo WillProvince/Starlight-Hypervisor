@@ -1,0 +1,10 @@
+PRETTY_NAME="Starlight (aurora)"
+NAME="Starlight"
+VERSION_ID="1.2.0"
+VERSION="1 (aurora)"
+VERSION_CODENAME=aurora
+DEBIAN_VERSION_FULL=1
+ID=starlight
+HOME_URL="https://www.starlight-servers.com/"
+SUPPORT_URL="https://starlight-servers.com/support"
+BUG_REPORT_URL="https://bugs.starlight-servers.com/"
