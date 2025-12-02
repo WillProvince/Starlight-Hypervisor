@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Import handlers
-from pyback.handlers.vm_handlers import list_vms, create_vm, get_vm_disk_info, update_vm_settings
+from pyback.handlers.vm_handlers import list_vms, create_vm, get_vm_disk_info, update_vm_settings, get_host_specs
 from pyback.handlers.vm_actions import vm_action
 from pyback.handlers.vm_deployment import deploy_vm_from_url
 from pyback.handlers.repository_handlers import (
@@ -126,6 +126,7 @@ def init_app():
     app.router.add_get('/api/vm/{name}/disk-info', get_vm_disk_info)
     app.router.add_put('/api/vm/{name}/settings', update_vm_settings)
     app.router.add_post('/api/vm/{name}/{action}', vm_action)
+    app.router.add_get('/api/host/specs', get_host_specs)
     
     # Repository Management
     app.router.add_get('/api/repositories', list_repositories)
