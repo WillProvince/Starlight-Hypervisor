@@ -97,22 +97,19 @@ async function logout() {
 function updateAuthUI() {
     const userMenu = document.getElementById('user-menu');
     const usernameEl = document.getElementById('current-username');
-    const userMgmtLink = document.getElementById('user-mgmt-link');
     const rebootServerLink = document.getElementById('reboot-server-link');
     const shutdownServerLink = document.getElementById('shutdown-server-link');
     const administrationSection = document.getElementById('settings-administration-section');
     
     if (authToken && currentUser) {
-        userMenu.classList.remove('hidden');
-        usernameEl.textContent = currentUser;
+        if (userMenu) userMenu.classList.remove('hidden');
+        if (usernameEl) usernameEl.textContent = currentUser;
         const isRootUser = currentUser === 'root';
         if (isAdmin || isRootUser) {
-            userMgmtLink.classList.remove('hidden');
             if (rebootServerLink) rebootServerLink.classList.remove('hidden');
             if (shutdownServerLink) shutdownServerLink.classList.remove('hidden');
             if (administrationSection) administrationSection.style.display = 'block';
         } else {
-            userMgmtLink.classList.add('hidden');
             if (rebootServerLink) rebootServerLink.classList.add('hidden');
             if (shutdownServerLink) shutdownServerLink.classList.add('hidden');
             if (administrationSection) administrationSection.style.display = 'none';
@@ -126,7 +123,7 @@ function updateAuthUI() {
             window.HostTerminal.updateHostConsoleSectionVisibility();
         }
     } else {
-        userMenu.classList.add('hidden');
+        if (userMenu) userMenu.classList.add('hidden');
     }
 }
 
