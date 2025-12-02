@@ -315,10 +315,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.UI.showStatus('User created successfully', 'success');
                 hideCreateUserModal();
                 loadSettingsUsers();
-                // Also refresh the user management page if it exists
-                if (window.UserManagement && window.UserManagement.fetchUsers) {
-                    window.UserManagement.fetchUsers();
-                }
             }
         });
     }
