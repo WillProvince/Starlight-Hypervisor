@@ -103,9 +103,14 @@ async function fetchAppStore() {
     const result = await window.API.apiCall('/repositories/apps');
     
     if (result && result.status === 'success') {
-        renderAppStore(result.apps);
+        // Filter out themes - only show VMs and LXC containers
+        const filteredApps = result.apps.filter(app => {
+            const type = app.type || 'vm';
+            return type === 'vm' || type === 'lxc';
+        });
+        renderAppStore(filteredApps);
         renderCategoryDropdown();
-        const appCount = result.total || result.apps?.length || 0;
+        const appCount = filteredApps.length;
         window.UI.showStatus(`Loaded ${appCount} apps from all enabled repositories`, 'success');
     } else if (appStoreListEl) {
         appStoreListEl.innerHTML = `<p class="text-center text-red-500 col-span-full p-4 bg-red-50 rounded-lg">
