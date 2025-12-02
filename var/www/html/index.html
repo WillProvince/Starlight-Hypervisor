@@ -124,12 +124,7 @@
                                 </svg>
                                 API Keys
                             </a>
-                            <a href="#" id="user-mgmt-link" onclick="navigateTo('user-management'); toggleUserMenu(); return false;" class="hidden flex items-center px-4 py-2 text-sm hover:bg-gray-100" style="color: var(--text-primary);">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                                </svg>
-                                Users
-                            </a>
+
                             <a href="#" id="reboot-server-link" onclick="rebootServer(); toggleUserMenu(); return false;" class="hidden flex items-center px-4 py-2 text-sm hover:bg-gray-100" style="color: var(--text-primary);">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
@@ -881,26 +876,7 @@
                     </div>
                 </div>
 
-                <!-- User Management Page -->
-                <div id="page-user-management" class="page-view">
-                    <div class="settings-section">
-                        <div class="flex justify-between items-center mb-4">
-                            <div>
-                                <h3 class="text-xl font-semibold" style="color: var(--text-primary);">User Management</h3>
-                                <p class="text-sm mt-1" style="color: var(--text-tertiary);">Manage system users (Admin only)</p>
-                            </div>
-                            <button onclick="showCreateUserModal()" class="flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                </svg>
-                                Create User
-                            </button>
-                        </div>
-                        <div id="users-list" class="space-y-4">
-                            <p class="text-center" style="color: var(--text-tertiary);">Loading users...</p>
-                        </div>
-                    </div>
-                </div>
+
             </div>
         </main>
     </div>
@@ -1426,7 +1402,7 @@
     <script src="/js/network-settings.js"></script>
     <script src="/js/system.js"></script>
     <script src="/js/api-keys.js"></script>
-    <script src="/js/user-management.js"></script>
+
     <script src="/js/main.js"></script>
 </body>
 </html>
