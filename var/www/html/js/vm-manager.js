@@ -230,33 +230,58 @@ function filterVms(searchTerm) {
 }
 
 // VM Settings Functions
-function showVmSettings(vmName, vmData) {
+async function showVmSettings(vmName, vmData) {
     currentVmSettings = vmData;
     
     document.getElementById('settings-vm-name').textContent = vmName;
     document.getElementById('settings-vm-name-input').value = vmName;
     document.getElementById('settings-vm-description').value = vmData.description || '';
     
-    // RAM
+    // Fetch host specs to set slider maximums
+    const hostSpecs = await window.API.apiCall('/host/specs');
+    if (hostSpecs && hostSpecs.status === 'success') {
+        const maxRamGB = Math.floor(hostSpecs.total_memory_mb / 1024);
+        const maxCpus = hostSpecs.total_cpus;
+        
+        // Set RAM slider max
+        const ramSlider = document.getElementById('settings-ram');
+        const ramInput = document.getElementById('settings-ram-input');
+        if (ramSlider) {
+            ramSlider.max = maxRamGB;
+        }
+        if (ramInput) {
+            ramInput.max = maxRamGB;
+        }
+        
+        // Set vCPU slider max
+        const vcpuSlider = document.getElementById('settings-vcpus');
+        const vcpuInput = document.getElementById('settings-vcpus-input');
+        if (vcpuSlider) {
+            vcpuSlider.max = maxCpus;
+        }
+        if (vcpuInput) {
+            vcpuInput.max = maxCpus;
+        }
+    }
+    
+    // RAM - Convert MB to GB for display
     const ramMB = vmData.memory || 512;
-    document.getElementById('settings-ram-slider').value = ramMB;
-    document.getElementById('settings-ram-input').value = ramMB;
-    document.getElementById('settings-ram-value').textContent = `${ramMB} MB`;
+    const ramGB = ramMB / 1024;
+    document.getElementById('settings-ram').value = ramGB;
+    document.getElementById('settings-ram-input').value = ramGB;
     
     // vCPU
     const vcpus = vmData.vcpus || 1;
-    document.getElementById('settings-vcpu-slider').value = vcpus;
-    document.getElementById('settings-vcpu-input').value = vcpus;
-    document.getElementById('settings-vcpu-value').textContent = vcpus;
+    document.getElementById('settings-vcpus').value = vcpus;
+    document.getElementById('settings-vcpus-input').value = vcpus;
     
     // Fetch and display disk info
     fetchVmDiskSize(vmName);
     
     // VRAM (default to 16 if not set)
     const vram = vmData.vram || 16;
-    document.getElementById('settings-vram-slider').value = vram;
+    document.getElementById('settings-vram').value = vram;
     document.getElementById('settings-vram-input').value = vram;
-    document.getElementById('settings-vram-value').textContent = `${vram} MB`;
     
     // Audio
     document.getElementById('settings-audio').checked = vmData.audio !== false;
@@ -287,31 +312,30 @@ function toggleAdvancedSettings() {
 }
 
 function updateRamDisplay(value) {
-    document.getElementById('settings-ram-value').textContent = `${value} MB`;
     document.getElementById('settings-ram-input').value = value;
 }
 
 function updateRamFromInput(value) {
-    const numValue = parseInt(value) || 512;
-    const clampedValue = Math.max(128, Math.min(65536, numValue));
-    document.getElementById('settings-ram-slider').value = clampedValue;
-    document.getElementById('settings-ram-value').textContent = `${clampedValue} MB`;
+    const numValue = parseFloat(value) || 0.5;
+    const ramSlider = document.getElementById('settings-ram');
+    const maxRam = parseFloat(ramSlider.max) || 32;
+    const clampedValue = Math.max(0.5, Math.min(maxRam, numValue));
+    ramSlider.value = clampedValue;
 }
 
 function updateVcpuDisplay(value) {
-    document.getElementById('settings-vcpu-value').textContent = value;
-    document.getElementById('settings-vcpu-input').value = value;
+    document.getElementById('settings-vcpus-input').value = value;
 }
 
 function updateVcpuFromInput(value) {
     const numValue = parseInt(value) || 1;
-    const clampedValue = Math.max(1, Math.min(32, numValue));
-    document.getElementById('settings-vcpu-slider').value = clampedValue;
-    document.getElementById('settings-vcpu-value').textContent = clampedValue;
+    const vcpuSlider = document.getElementById('settings-vcpus');
+    const maxCpus = parseInt(vcpuSlider.max) || 16;
+    const clampedValue = Math.max(1, Math.min(maxCpus, numValue));
+    vcpuSlider.value = clampedValue;
 }
 
 function updateDiskDisplay(value) {
-    document.getElementById('settings-disk-value').textContent = `${value} GB`;
     document.getElementById('settings-disk-input').value = value;
 }
 
@@ -319,20 +343,17 @@ function updateDiskFromInput(value) {
     const numValue = parseInt(value) || 10;
     const minSize = currentVmSettings?.current_disk_size_gb || 10;
     const clampedValue = Math.max(minSize, Math.min(1000, numValue));
-    document.getElementById('settings-disk-slider').value = clampedValue;
-    document.getElementById('settings-disk-value').textContent = `${clampedValue} GB`;
+    document.getElementById('settings-disk').value = clampedValue;
 }
 
 function updateVramDisplay(value) {
-    document.getElementById('settings-vram-value').textContent = `${value} MB`;
     document.getElementById('settings-vram-input').value = value;
 }
 
 function updateVramFromInput(value) {
     const numValue = parseInt(value) || 16;
     const clampedValue = Math.max(8, Math.min(512, numValue));
-    document.getElementById('settings-vram-slider').value = clampedValue;
-    document.getElementById('settings-vram-value').textContent = `${clampedValue} MB`;
+    document.getElementById('settings-vram').value = clampedValue;
 }
 
 async function fetchVmDiskSize(vmName) {
@@ -341,11 +362,10 @@ async function fetchVmDiskSize(vmName) {
         const currentSizeGB = result.current_size_gb;
         currentVmSettings.current_disk_size_gb = currentSizeGB;
         
-        document.getElementById('settings-disk-slider').min = currentSizeGB;
-        document.getElementById('settings-disk-slider').value = currentSizeGB;
+        document.getElementById('settings-disk').min = currentSizeGB;
+        document.getElementById('settings-disk').value = currentSizeGB;
         document.getElementById('settings-disk-input').value = currentSizeGB;
-        document.getElementById('settings-disk-value').textContent = `${currentSizeGB} GB`;
-        document.getElementById('settings-disk-current').textContent = `Current: ${currentSizeGB} GB`;
+        document.getElementById('current-disk-size').textContent = `${currentSizeGB} GB`;
     }
 }
 
@@ -353,8 +373,9 @@ async function saveVmSettings() {
     const vmName = document.getElementById('settings-vm-name-input').value;
     const newName = vmName; // Name changes could be added here
     const description = document.getElementById('settings-vm-description').value;
-    const ramMB = parseInt(document.getElementById('settings-ram-input').value);
-    const vcpus = parseInt(document.getElementById('settings-vcpu-input').value);
+    const ramGB = parseFloat(document.getElementById('settings-ram-input').value);
+    const ramMB = Math.round(ramGB * 1024); // Convert GB to MB
+    const vcpus = parseInt(document.getElementById('settings-vcpus-input').value);
     const diskGB = parseInt(document.getElementById('settings-disk-input').value);
     const vramMB = parseInt(document.getElementById('settings-vram-input').value);
     const audio = document.getElementById('settings-audio').checked;
