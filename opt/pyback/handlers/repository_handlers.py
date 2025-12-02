@@ -42,6 +42,26 @@ async def get_all_apps(request):
     return web.json_response({'status': 'success', 'apps': all_apps, 'total': len(all_apps)})
 
 
+async def get_all_themes(request):
+    """Fetches and aggregates themes from all enabled repositories."""
+    config = load_repositories_config()
+    all_themes = []
+    
+    # Fetch items from all enabled repositories
+    for repo in config.get('repositories', []):
+        if repo.get('enabled', False):
+            items = await fetch_repository_apps(repo['url'])
+            if items:
+                # Filter for themes only and add repository metadata
+                for item in items:
+                    if item.get('type') == 'theme':
+                        item['repo_id'] = repo['id']
+                        item['repo_name'] = repo['name']
+                        all_themes.append(item)
+    
+    return web.json_response({'status': 'success', 'themes': all_themes, 'total': len(all_themes)})
+
+
 async def add_repository(request):
     """Adds a new repository to the configuration."""
     try:
