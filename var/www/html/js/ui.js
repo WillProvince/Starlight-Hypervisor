@@ -69,12 +69,18 @@ function navigateTo(page) {
     
     // Show selected page
     document.getElementById(`page-${page}`).classList.add('active');
-    document.querySelector(`[data-page="${page}"]`).classList.add('active');
+    
+    // Activate nav item if it exists (some pages like themestore don't have nav items)
+    const navItem = document.querySelector(`[data-page="${page}"]`);
+    if (navItem) {
+        navItem.classList.add('active');
+    }
     
     // Update page title
     const titles = {
         'vms': 'Deployed',
         'appstore': 'App Store',
+        'themestore': 'Theme Store',
         'settings': 'Settings',
         'api-keys': 'API Keys',
         'user-management': 'User Management'
@@ -96,6 +102,8 @@ function navigateTo(page) {
         }, 5000);
     } else if (page === 'appstore') {
         window.AppStore.fetchAppStore();
+    } else if (page === 'themestore') {
+        window.ThemeStore.fetchThemeStore();
     } else if (page === 'settings') {
         window.Settings.fetchRepositories();
         window.Settings.loadSettingsUsers();
