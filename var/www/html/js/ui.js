@@ -82,8 +82,7 @@ function navigateTo(page) {
         'appstore': 'App Store',
         'themestore': 'Theme Store',
         'settings': 'Settings',
-        'api-keys': 'API Keys',
-        'user-management': 'User Management'
+        'api-keys': 'API Keys'
     };
     document.getElementById('page-title').textContent = titles[page] || 'Starlight';
     
@@ -119,8 +118,6 @@ function navigateTo(page) {
         }
     } else if (page === 'api-keys') {
         window.APIKeys.fetchApiKeys();
-    } else if (page === 'user-management') {
-        window.UserManagement.fetchUsers();
     }
     
     // Close mobile sidebar
