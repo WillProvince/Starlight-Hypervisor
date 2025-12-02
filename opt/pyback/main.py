@@ -26,7 +26,7 @@ from pyback.handlers.vm_handlers import list_vms, create_vm, get_vm_disk_info, u
 from pyback.handlers.vm_actions import vm_action
 from pyback.handlers.vm_deployment import deploy_vm_from_url
 from pyback.handlers.repository_handlers import (
-    list_repositories, get_all_apps, add_repository, 
+    list_repositories, get_all_apps, get_all_themes, add_repository, 
     update_repository, delete_repository
 )
 from pyback.handlers.download_handlers import (
@@ -130,6 +130,7 @@ def init_app():
     # Repository Management
     app.router.add_get('/api/repositories', list_repositories)
     app.router.add_get('/api/repositories/apps', get_all_apps)
+    app.router.add_get('/api/repositories/themes', get_all_themes)
     app.router.add_post('/api/repositories', add_repository)
     app.router.add_put('/api/repositories/{id}', update_repository)
     app.router.add_delete('/api/repositories/{id}', delete_repository)
