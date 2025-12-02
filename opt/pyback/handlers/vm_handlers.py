@@ -567,3 +567,53 @@ async def update_vm_settings(request):
     except Exception as e:
         conn.close()
         return web.json_response({'status': 'error', 'message': str(e)}, status=500)
+
+
+async def get_host_specs(request):
+    """
+    Get host system specifications for setting slider maximums.
+    
+    Returns CPU count and total memory of the host system.
+    """
+    conn = None
+    try:
+        conn = get_connection('qemu')
+        if not conn:
+            return web.json_response({
+                'status': 'error', 
+                'message': 'Could not connect to libvirt.'
+            }, status=500)
+        
+        # Get host info: returns tuple (model, memory_mb, cpus, mhz, nodes, sockets, cores, threads)
+        host_info = conn.getInfo()
+        
+        # Total memory in MB
+        total_memory_mb = host_info[1]
+        
+        # Total CPU cores
+        total_cpus = host_info[2]
+        
+        conn.close()
+        
+        return web.json_response({
+            'status': 'success',
+            'total_memory_mb': total_memory_mb,
+            'total_cpus': total_cpus
+        })
+        
+    except libvirt.libvirtError as e:
+        logger.error(f"Libvirt error getting host specs: {e}")
+        if conn:
+            conn.close()
+        return web.json_response({
+            'status': 'error', 
+            'message': f'Libvirt operation failed: {e}'
+        }, status=500)
+    except Exception as e:
+        logger.error(f"Error getting host specs: {e}")
+        if conn:
+            conn.close()
+        return web.json_response({
+            'status': 'error', 
+            'message': str(e)
+        }, status=500)
