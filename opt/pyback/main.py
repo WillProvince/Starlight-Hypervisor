@@ -30,7 +30,7 @@ from pyback.handlers.repository_handlers import (
     update_repository, delete_repository
 )
 from pyback.handlers.download_handlers import (
-    get_download_progress, get_all_downloads, 
+    get_download_progress, get_all_downloads, dismiss_download,
     get_deployment_logs, cleanup_orphaned_containers,
     download_progress as dl_progress
 )
@@ -139,6 +139,7 @@ def init_app():
     # Download Progress
     app.router.add_get('/api/downloads/{vm_name}', get_download_progress)
     app.router.add_get('/api/downloads', get_all_downloads)
+    app.router.add_delete('/api/downloads/{vm_name}', dismiss_download)
     app.router.add_get('/api/logs', get_deployment_logs)
     
     # Cleanup

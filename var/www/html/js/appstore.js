@@ -377,7 +377,6 @@ function renderDownloadProgress(downloads) {
     
     downloadArray.forEach(download => {
         const itemEl = document.createElement('div');
-        itemEl.className = 'sidebar-download-item';
         
         // Calculate percentage from progress and total
         let percentage = 0;
@@ -385,19 +384,57 @@ function renderDownloadProgress(downloads) {
             percentage = Math.round((download.progress / download.total) * 100);
         }
         
-        const isIndeterminate = download.status === 'downloading' && !percentage;
+        const status = download.status || 'downloading';
+        const isIndeterminate = status === 'downloading' && !percentage;
+        
+        // Determine styling based on status
+        let statusClass = 'sidebar-download-item';
+        let progressColor = '';
+        let statusIcon = '';
+        
+        if (status === 'error') {
+            statusClass += ' sidebar-download-error';
+            progressColor = 'background-color: #ef4444;'; // red
+            statusIcon = '<svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>';
+            percentage = 100; // Show full bar for errors
+        } else if (status === 'completed' || status === 'complete') {
+            // Note: Check both 'completed' and 'complete' for backward compatibility
+            statusClass += ' sidebar-download-completed';
+            progressColor = 'background-color: #10b981;'; // green
+            statusIcon = '<svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>';
+            percentage = 100; // Show full bar for completed
+        } else {
+            statusClass += ' sidebar-download-active';
+            progressColor = 'background-color: #6366f1;'; // blue/indigo
+            statusIcon = '<svg class="w-3 h-3 inline mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>';
+        }
+        
+        itemEl.className = statusClass;
         
         itemEl.innerHTML = `
-            <div class="sidebar-download-name">${download.vm_name}</div>
-            <div class="sidebar-download-status">${download.message || download.status}: ${percentage}%</div>
+            <div class="flex justify-between items-start mb-1">
+                <div class="sidebar-download-name flex-1">${download.vm_name}</div>
+                <button onclick="dismissDownload('${download.vm_name}')" 
+                        class="dismiss-download-btn ml-2"
+                        title="Dismiss">×</button>
+            </div>
+            <div class="sidebar-download-status">${statusIcon}${download.message || status}: ${percentage}%</div>
             <div class="sidebar-progress-bar">
                 <div class="sidebar-progress-fill ${isIndeterminate ? 'indeterminate' : ''}" 
-                     style="width: ${percentage}%"></div>
+                     style="width: ${percentage}%; ${progressColor}"></div>
             </div>
         `;
         
         sidebarDownloadsListEl.appendChild(itemEl);
     });
+}
+
+async function dismissDownload(vmName) {
+    const result = await window.API.apiCall(`/downloads/${vmName}`, 'DELETE');
+    if (result && result.status === 'success') {
+        // Immediately refresh download progress
+        checkDownloadProgress();
+    }
 }
 
 function startDownloadPolling() {
@@ -464,7 +501,8 @@ window.AppStore = {
     startDownloadPolling,
     toggleCategoryDropdown,
     selectCategory,
-    renderCategoryDropdown
+    renderCategoryDropdown,
+    dismissDownload
 };
 
 // Expose functions globally for onclick handlers
@@ -477,3 +515,4 @@ window.showAppDetailByIndex = showAppDetailByIndex;
 window.deployAppByIndex = deployAppByIndex;
 window.toggleCategoryDropdown = toggleCategoryDropdown;
 window.selectCategory = selectCategory;
+window.dismissDownload = dismissDownload;

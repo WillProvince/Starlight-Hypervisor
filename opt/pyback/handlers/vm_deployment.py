@@ -12,6 +12,7 @@ import logging
 import asyncio
 import aiohttp
 import libvirt
+import time
 from aiohttp import web
 from xml.etree import ElementTree as ET
 
@@ -30,6 +31,22 @@ logger = logging.getLogger(__name__)
 
 # Download progress tracking dictionary (initialized from download_handlers via main.py)
 download_progress = {}
+
+
+def update_download_status(vm_name, status, message=None, progress=None, total=None):
+    """Helper function to update download progress with timestamp."""
+    if vm_name not in download_progress:
+        download_progress[vm_name] = {}
+    
+    download_progress[vm_name]['status'] = status
+    download_progress[vm_name]['timestamp'] = time.time()
+    
+    if message is not None:
+        download_progress[vm_name]['message'] = message
+    if progress is not None:
+        download_progress[vm_name]['progress'] = progress
+    if total is not None:
+        download_progress[vm_name]['total'] = total
 
 
 def load_repositories_config():
@@ -149,12 +166,7 @@ async def deploy_vm_from_url(request):
     try:
         if cloud_image_url:
             # Initialize download progress tracking
-            download_progress[vm_name] = {
-                'status': 'downloading',
-                'progress': 0,
-                'total': 0,
-                'message': 'Starting download...'
-            }
+            update_download_status(vm_name, 'downloading', 'Starting download...', progress=0, total=0)
             
             # Check if URL points to a compressed file
             is_tar_xz = cloud_image_url.endswith('.tar.xz')
@@ -193,8 +205,7 @@ async def deploy_vm_from_url(request):
                 logger.info(f"Rootfs tarball downloaded successfully.")
                 
                 # Extract the tar.xz rootfs
-                download_progress[vm_name]['status'] = 'extracting'
-                download_progress[vm_name]['message'] = 'Extracting rootfs...'
+                update_download_status(vm_name, 'extracting', 'Extracting rootfs...')
                 logger.info(f"Extracting {download_path} to {rootfs_path}")
                 
                 # Run extraction in executor to avoid blocking
@@ -237,8 +248,7 @@ async def deploy_vm_from_url(request):
                 if not found_init:
                     logger.warning(f"No init found in rootfs at standard locations. Container may fail to start.")
                 
-                download_progress[vm_name]['status'] = 'complete'
-                download_progress[vm_name]['message'] = 'Rootfs ready'
+                update_download_status(vm_name, 'completed', 'Rootfs ready')
                 logger.info(f"Rootfs preparation complete for {vm_name}")
                 
                 disk_path = rootfs_path  # Set disk_path to rootfs for XML injection
@@ -275,8 +285,7 @@ async def deploy_vm_from_url(request):
                         
                         # Decompress if needed (run in executor to avoid blocking)
                         if is_xz:
-                            download_progress[vm_name]['status'] = 'decompressing'
-                            download_progress[vm_name]['message'] = 'Decompressing image...'
+                            update_download_status(vm_name, 'decompressing', 'Decompressing image...')
                             logger.info(f"Decompressing {download_path} to {disk_path}")
                             
                             # Run decompression in a thread to avoid blocking the event loop
@@ -295,8 +304,7 @@ async def deploy_vm_from_url(request):
                             logger.info(f"Decompressed file size: {file_size / (1024*1024):.2f} MB")
                             
                             # Check file format - might need conversion from raw to qcow2
-                            download_progress[vm_name]['status'] = 'checking'
-                            download_progress[vm_name]['message'] = 'Verifying image format...'
+                            update_download_status(vm_name, 'checking', 'Verifying image format...')
                             logger.info(f"Checking image format of {disk_path}")
                             
                             # Check what format the file is
@@ -336,8 +344,7 @@ async def deploy_vm_from_url(request):
                             else:
                                 logger.warning(f"Could not check image format: {stderr.decode()}")
                 
-                download_progress[vm_name]['status'] = 'resizing'
-                download_progress[vm_name]['message'] = 'Checking disk size...'
+                update_download_status(vm_name, 'resizing', 'Checking disk size...')
                 logger.info(f"Checking current disk size for {disk_path}")
                 
                 # Get current disk size
@@ -402,8 +409,7 @@ async def deploy_vm_from_url(request):
                         else:
                             raise Exception(f"Failed to resize cloud image: {error_msg}")
                     
-                    download_progress[vm_name]['status'] = 'complete'
-                    download_progress[vm_name]['message'] = 'Image ready'
+                    update_download_status(vm_name, 'completed', 'Image ready')
                     logger.info(f"Image preparation complete for {vm_name}")
                     
         else:
@@ -421,8 +427,7 @@ async def deploy_vm_from_url(request):
             
     except Exception as e:
         if vm_name in download_progress:
-            download_progress[vm_name]['status'] = 'error'
-            download_progress[vm_name]['message'] = str(e)
+            update_download_status(vm_name, 'error', str(e))
         conn.close()
         return web.json_response({'status': 'error', 'message': f'Disk creation failed: {e}'}, status=500)
 
@@ -542,8 +547,7 @@ async def deploy_vm_from_url(request):
         # Cleanup the disk if we fail XML modification
         logger.error(f"XML modification error for {vm_name}: {e}")
         if vm_name in download_progress:
-            download_progress[vm_name]['status'] = 'error'
-            download_progress[vm_name]['message'] = f'XML modification failed: {e}'
+            update_download_status(vm_name, 'error', f'XML modification failed: {e}')
         try:
             if os.path.exists(disk_path):
                 os.remove(disk_path)
@@ -602,14 +606,12 @@ async def deploy_vm_from_url(request):
         error_message = str(e)
         logger.error(f"Libvirt error for {vm_name}: {error_message}")
         if vm_name in download_progress:
-            download_progress[vm_name]['status'] = 'error'
-            download_progress[vm_name]['message'] = f'VM creation failed: {error_message}'
+            update_download_status(vm_name, 'error', f'VM creation failed: {error_message}')
         conn.close()
         return web.json_response({'status': 'error', 'message': f'Libvirt operation failed during deployment: {error_message}'}, status=500)
     except Exception as e:
         logger.error(f"Unexpected error for {vm_name}: {e}")
         if vm_name in download_progress:
-            download_progress[vm_name]['status'] = 'error'
-            download_progress[vm_name]['message'] = str(e)
+            update_download_status(vm_name, 'error', str(e))
         conn.close()
         return web.json_response({'status': 'error', 'message': str(e)}, status=500)

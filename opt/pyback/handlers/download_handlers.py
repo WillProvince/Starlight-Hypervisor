@@ -9,6 +9,7 @@ import os
 import shutil
 import logging
 import libvirt
+import time
 from aiohttp import web
 
 from ..config_loader import get_vm_storage_path
@@ -19,6 +20,9 @@ logger = logging.getLogger(__name__)
 
 # Download progress tracking dictionary (shared with vm_deployment module via main.py)
 download_progress = {}
+
+# Timeout in seconds for auto-removing completed/error entries
+CLEANUP_TIMEOUT = 30
 
 
 async def get_download_progress(request):
@@ -32,7 +36,25 @@ async def get_download_progress(request):
 
 
 async def get_all_downloads(request):
-    """Returns all current download progresses."""
+    """Returns all current download progresses and cleans up stale entries."""
+    current_time = time.time()
+    
+    # Clean up entries that are in error or completed state and older than CLEANUP_TIMEOUT
+    entries_to_remove = []
+    for vm_name, data in download_progress.items():
+        status = data.get('status', 'downloading')
+        timestamp = data.get('timestamp', current_time)
+        
+        # Remove if status is error or completed and timeout has elapsed
+        # Note: Check both 'completed' and 'complete' for backward compatibility
+        if status in ['error', 'completed', 'complete'] and (current_time - timestamp) >= CLEANUP_TIMEOUT:
+            entries_to_remove.append(vm_name)
+    
+    # Remove stale entries
+    for vm_name in entries_to_remove:
+        logger.info(f"Auto-removing download entry for {vm_name} (status: {download_progress[vm_name].get('status')}, age: {current_time - download_progress[vm_name].get('timestamp', current_time):.1f}s)")
+        del download_progress[vm_name]
+    
     return web.json_response({'status': 'success', 'downloads': download_progress})
 
 
@@ -45,6 +67,18 @@ async def get_deployment_logs(request):
         'downloads': download_progress,
         'message': 'Check server console for detailed logs'
     })
+
+
+async def dismiss_download(request):
+    """Manually dismiss a download progress entry."""
+    vm_name = request.match_info.get('vm_name')
+    
+    if vm_name in download_progress:
+        del download_progress[vm_name]
+        logger.info(f"Manually dismissed download entry for {vm_name}")
+        return web.json_response({'status': 'success', 'message': f'Download entry for {vm_name} dismissed'})
+    else:
+        return web.json_response({'status': 'error', 'message': 'Download entry not found'}, status=404)
 
 
 async def cleanup_orphaned_containers(request):

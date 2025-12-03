@@ -113,10 +113,50 @@
     padding: 0.5rem;
     background-color: rgba(255, 255, 255, 0.05);
     border-radius: 0.5rem;
+    position: relative;
 }
 
 .sidebar-download-item:last-child {
     margin-bottom: 0;
+}
+
+/* Download state variations */
+.sidebar-download-active {
+    border-left: 3px solid #6366f1; /* blue/indigo */
+}
+
+.sidebar-download-completed {
+    background-color: rgba(16, 185, 129, 0.1); /* green tint */
+    border-left: 3px solid #10b981;
+}
+
+.sidebar-download-error {
+    background-color: rgba(239, 68, 68, 0.1); /* red tint */
+    border-left: 3px solid #ef4444;
+}
+
+/* Dismiss button */
+.dismiss-download-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.25rem;
+    line-height: 1;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.dismiss-download-btn:hover {
+    background: rgba(239, 68, 68, 0.8);
+    color: white;
+    transform: scale(1.1);
 }
 
 .sidebar-download-name {

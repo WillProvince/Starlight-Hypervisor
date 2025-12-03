@@ -229,7 +229,7 @@ async def get_vm_disk_info(request):
         return web.json_response({'status': 'error', 'message': f'VM named {name} not found.'}, status=404)
     
     try:
-        # Get XML and extract disk path
+        # Get XML and extract disk path and target device
         xml_desc = domain.XMLDesc(libvirt.VIR_DOMAIN_XML_INACTIVE)
         root = ET.fromstring(xml_desc)
         
@@ -248,29 +248,81 @@ async def get_vm_disk_info(request):
             conn.close()
             return web.json_response({'status': 'error', 'message': f'Disk file not found at {disk_path}'}, status=404)
         
-        # Use qemu-img to get disk size
-        process = await asyncio.create_subprocess_exec(
-            'qemu-img', 'info', '--output=json', disk_path,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await process.communicate()
+        # Get target device name and format from XML
+        target_element = disk_element.find('target')
+        target_dev = target_element.get('dev') if target_element is not None else None
         
-        if process.returncode != 0:
+        driver_element = disk_element.find('driver')
+        disk_format = driver_element.get('type', 'unknown') if driver_element is not None else 'unknown'
+        
+        # Check if VM is running
+        is_running = domain.isActive()
+        virtual_size_bytes = 0
+        use_qemu_img = True  # Default to qemu-img method
+        
+        if is_running:
+            # For running VMs, use libvirt blockInfo to avoid file locks
+            # Try with disk path first (more reliable), then device name
+            blockinfo_success = False
+            
+            # Try with disk path first
+            try:
+                block_info = domain.blockInfo(disk_path)
+                virtual_size_bytes = block_info[0]  # Capacity (virtual size) in bytes
+                use_qemu_img = False  # Successfully got info via blockInfo
+                blockinfo_success = True
+            except libvirt.libvirtError as e:
+                logger.warning(f'blockInfo with disk path failed for running VM {name}: {e}')
+            
+            # If disk path didn't work, try with target device name
+            if not blockinfo_success and target_dev:
+                try:
+                    block_info = domain.blockInfo(target_dev)
+                    virtual_size_bytes = block_info[0]  # Capacity (virtual size) in bytes
+                    use_qemu_img = False  # Successfully got info via blockInfo
+                    blockinfo_success = True
+                except libvirt.libvirtError as e:
+                    logger.warning(f'blockInfo with target device failed for running VM {name}: {e}')
+            
+            # If both methods failed, fall back to qemu-img (may fail with lock error)
+            if not blockinfo_success:
+                logger.warning(f'All blockInfo methods failed for running VM {name}, falling back to qemu-img (may fail with file lock)')
+                use_qemu_img = True
+        
+        if use_qemu_img:
+            # For stopped VMs, use qemu-img to get disk size
+            process = await asyncio.create_subprocess_exec(
+                'qemu-img', 'info', '--output=json', disk_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
+            
+            if process.returncode != 0:
+                conn.close()
+                return web.json_response({'status': 'error', 'message': f'Failed to get disk info: {stderr.decode()}'}, status=500)
+            
+            disk_info = json.loads(stdout.decode())
+            virtual_size_bytes = disk_info.get('virtual-size', 0)
+            # qemu-img provides more accurate format info from the actual file
+            disk_format = disk_info.get('format', disk_format)
+        
+        # Validate that we got a valid disk size
+        if virtual_size_bytes <= 0:
             conn.close()
-            return web.json_response({'status': 'error', 'message': f'Failed to get disk info: {stderr.decode()}'}, status=500)
+            return web.json_response({
+                'status': 'error', 
+                'message': f'Could not determine valid disk size (got {virtual_size_bytes} bytes)'
+            }, status=500)
         
-        import json as json_module
-        disk_info = json_module.loads(stdout.decode())
-        virtual_size_bytes = disk_info.get('virtual-size', 0)
         virtual_size_gb = virtual_size_bytes / (1024**3)
         
         conn.close()
         return web.json_response({
             'status': 'success',
-            'disk_size_gb': round(virtual_size_gb, 2),
+            'current_size_gb': round(virtual_size_gb, 2),
             'disk_path': disk_path,
-            'format': disk_info.get('format', 'unknown')
+            'format': disk_format
         })
         
     except Exception as e:
