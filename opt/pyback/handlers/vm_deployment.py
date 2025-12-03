@@ -571,6 +571,8 @@ async def deploy_vm_from_url(request):
             raise Exception("Libvirt failed to define the domain from the modified XML.")
         
         logger.info(f"Starting VM {vm_name}...")
+        if vm_name in download_progress:
+            update_download_status(vm_name, 'finalizing', 'Starting VM...')
         domain.create()
         
         # Store metadata with type information and icon
@@ -586,9 +588,9 @@ async def deploy_vm_from_url(request):
         else:
             set_vm_metadata(vm_name, metadata)
         
-        # Clean up download progress on success
+        # Update download progress to show successful completion
         if vm_name in download_progress:
-            del download_progress[vm_name]
+            update_download_status(vm_name, 'completed', 'App Deployed!')
         
         conn.close()
         entity_type = "Container" if deploy_type == 'lxc' else "VM"
