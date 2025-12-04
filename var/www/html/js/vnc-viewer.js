@@ -244,6 +244,8 @@ async function vncControlVm(action) {
  */
 async function launchVncInContainer(sessionId, vmName, vncPort, canvasContainerId, statusElementId) {
     console.log(`VNC: Launching VNC for ${vmName} in container ${canvasContainerId}`);
+
+    await checkNoVNCLoaded();
     
     if (!vncPort) {
         throw new Error('VNC port not available for this VM');
