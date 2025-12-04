@@ -15,6 +15,12 @@
 - **🌙 Dark Mode** - Beautiful light and dark themes
 - **📱 Responsive Design** - Works great on desktop and mobile devices
 
+## 📸 Screenshots
+![Deployed List](https://i.imgur.com/qkQFyWD.png)
+![VM and LXC consoles](https://i.imgur.com/TU4PApz.png)
+![App Store](https://i.imgur.com/i9Z1Sea.png)
+![Settings](https://i.imgur.com/a5i6Ul8.png)
+
 ## 🚀 Getting Started
 
 Download a release ISO, burn it to a disk or boot it from USB. Follow on-screen steps.
