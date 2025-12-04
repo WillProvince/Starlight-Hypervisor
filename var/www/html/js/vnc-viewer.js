@@ -93,6 +93,8 @@ async function launchVnc(vmName, vncPort) {
         window.UI.showStatus('VNC port not available for this VM', 'error');
         return;
     }
+
+    await checkNoVNCLoaded();
     
     // Verify container exists
     if (!vncCanvasContainerEl) {
