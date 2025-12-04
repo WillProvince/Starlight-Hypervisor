@@ -360,12 +360,22 @@ async function fetchVmDiskSize(vmName) {
     const result = await window.API.apiCall(`/vm/${vmName}/disk-info`);
     if (result && result.status === 'success') {
         const currentSizeGB = result.current_size_gb;
-        currentVmSettings.current_disk_size_gb = currentSizeGB;
         
-        document.getElementById('settings-disk').min = currentSizeGB;
-        document.getElementById('settings-disk').value = currentSizeGB;
-        document.getElementById('settings-disk-input').value = currentSizeGB;
-        document.getElementById('current-disk-size').textContent = `${currentSizeGB} GB`;
+        // Validate that we got a valid disk size
+        if (currentSizeGB !== undefined && currentSizeGB !== null && currentSizeGB > 0) {
+            currentVmSettings.current_disk_size_gb = currentSizeGB;
+            
+            document.getElementById('settings-disk').min = currentSizeGB;
+            document.getElementById('settings-disk').value = currentSizeGB;
+            document.getElementById('settings-disk-input').value = currentSizeGB;
+            document.getElementById('current-disk-size').textContent = `${currentSizeGB} GB`;
+        } else {
+            console.error('Invalid disk size returned:', currentSizeGB);
+            document.getElementById('current-disk-size').textContent = 'Error: Invalid disk size';
+        }
+    } else {
+        console.error('Failed to fetch disk size:', result);
+        document.getElementById('current-disk-size').textContent = 'Error: Could not retrieve';
     }
 }
 
@@ -400,6 +410,168 @@ async function saveVmSettings() {
     }
 }
 
+// --- Create VM Functions ---
+
+async function showCreateVmModal() {
+    const modal = document.getElementById('create-vm-modal');
+    if (!modal) return;
+    
+    // Fetch host specs to set max values
+    const specs = await window.API.apiCall('/host/specs');
+    if (specs && specs.status === 'success') {
+        const ramSlider = document.getElementById('create-vm-ram');
+        const ramInput = document.getElementById('create-vm-ram-input');
+        const vcpusSlider = document.getElementById('create-vm-vcpus');
+        const vcpusInput = document.getElementById('create-vm-vcpus-input');
+        
+        // Set max values
+        const maxRam = Math.floor(specs.total_memory_mb / 1024);
+        const maxCpus = specs.total_cpus;
+        
+        ramSlider.max = maxRam;
+        ramInput.max = maxRam;
+        vcpusSlider.max = maxCpus;
+        vcpusInput.max = maxCpus;
+        
+        // Display host specs
+        document.getElementById('create-vm-host-ram').textContent = maxRam;
+        document.getElementById('create-vm-host-cpus').textContent = maxCpus;
+        
+        // Set default values
+        const defaultRam = Math.min(2, maxRam);
+        const defaultCpus = Math.min(2, maxCpus);
+        
+        ramSlider.value = defaultRam;
+        ramInput.value = defaultRam;
+        vcpusSlider.value = defaultCpus;
+        vcpusInput.value = defaultCpus;
+    }
+    
+    // Fetch available ISOs
+    const isoResult = await window.API.apiCall('/iso/list');
+    const isoSelect = document.getElementById('create-vm-iso');
+    const isoHelp = document.getElementById('create-vm-iso-help');
+    
+    // Clear and repopulate ISO dropdown
+    isoSelect.innerHTML = '<option value="">No ISO (Empty CD Drive)</option>';
+    
+    if (isoResult && isoResult.status === 'success' && isoResult.isos && isoResult.isos.length > 0) {
+        isoResult.isos.forEach(iso => {
+            const option = document.createElement('option');
+            option.value = iso.path;
+            option.textContent = `${iso.filename} (${iso.size_mb} MB)`;
+            isoSelect.appendChild(option);
+        });
+        isoHelp.textContent = 'Select an ISO to boot from, or leave empty to create a blank VM';
+    } else {
+        // Create link element for ISO library
+        isoHelp.textContent = 'No ISOs available. ';
+        const link = document.createElement('a');
+        link.href = '#';
+        link.className = 'text-indigo-600 hover:text-indigo-800';
+        link.textContent = 'Upload one in Settings → ISO Library';
+        link.onclick = (e) => {
+            e.preventDefault();
+            navigateTo('settings');
+            return false;
+        };
+        isoHelp.appendChild(link);
+    }
+    
+    // Reset form
+    document.getElementById('create-vm-form').reset();
+    document.getElementById('create-vm-disk').value = 32;
+    document.getElementById('create-vm-disk-input').value = 32;
+    
+    modal.classList.remove('hidden');
+}
+
+function hideCreateVmModal() {
+    const modal = document.getElementById('create-vm-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// Slider update functions for Create VM modal
+function updateCreateVmRamDisplay(value) {
+    document.getElementById('create-vm-ram-input').value = value;
+}
+
+function updateCreateVmRamFromInput(value) {
+    document.getElementById('create-vm-ram').value = value;
+}
+
+function updateCreateVmVcpuDisplay(value) {
+    document.getElementById('create-vm-vcpus-input').value = value;
+}
+
+function updateCreateVmVcpuFromInput(value) {
+    document.getElementById('create-vm-vcpus').value = value;
+}
+
+function updateCreateVmDiskDisplay(value) {
+    document.getElementById('create-vm-disk-input').value = value;
+}
+
+function updateCreateVmDiskFromInput(value) {
+    document.getElementById('create-vm-disk').value = value;
+}
+
+async function createVm(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('create-vm-name').value.trim();
+    const ramGB = parseFloat(document.getElementById('create-vm-ram-input').value);
+    const vcpus = parseInt(document.getElementById('create-vm-vcpus-input').value);
+    const diskGB = parseInt(document.getElementById('create-vm-disk-input').value);
+    const isoPath = document.getElementById('create-vm-iso').value;
+    
+    // Validate VM name
+    if (!name || !/^[a-zA-Z0-9_-]+$/.test(name)) {
+        window.UI.showStatus('Invalid VM name. Use only letters, numbers, hyphens, and underscores.', 'error');
+        return;
+    }
+    
+    // Validate values
+    if (ramGB < 0.5 || vcpus < 1 || diskGB < 8) {
+        window.UI.showStatus('Invalid VM configuration values', 'error');
+        return;
+    }
+    
+    const vmData = {
+        name: name,
+        memory_mb: ramGB * 1024,
+        vcpus: vcpus,
+        disk_size_gb: diskGB
+    };
+    
+    // Add ISO path if selected
+    if (isoPath) {
+        vmData.iso_path = isoPath;
+    }
+    
+    // Sanitize name for display (prevent XSS)
+    const sanitizedName = document.createElement('div');
+    sanitizedName.textContent = name;
+    const safeName = sanitizedName.innerHTML;
+    
+    window.UI.showStatus(`Creating VM "${safeName}"...`, 'info');
+    hideCreateVmModal();
+    
+    const result = await window.API.apiCall('/vm', 'POST', vmData);
+    if (result && result.status === 'success') {
+        window.UI.showStatus(`VM "${name}" created successfully!`, 'success');
+        fetchVms();
+    }
+}
+
+// Setup form handler
+document.addEventListener('DOMContentLoaded', () => {
+    const createVmForm = document.getElementById('create-vm-form');
+    if (createVmForm) {
+        createVmForm.addEventListener('submit', createVm);
+    }
+});
+
 // Export VM Manager functions
 window.VMManager = {
     performVmAction,
@@ -418,7 +590,9 @@ window.VMManager = {
     updateVramDisplay,
     updateVramFromInput,
     fetchVmDiskSize,
-    saveVmSettings
+    saveVmSettings,
+    showCreateVmModal,
+    hideCreateVmModal
 };
 
 // Expose functions globally for onclick handlers
@@ -438,3 +612,11 @@ window.updateVramDisplay = updateVramDisplay;
 window.updateVramFromInput = updateVramFromInput;
 window.fetchVmDiskSize = fetchVmDiskSize;
 window.saveVmSettings = saveVmSettings;
+window.showCreateVmModal = showCreateVmModal;
+window.hideCreateVmModal = hideCreateVmModal;
+window.updateCreateVmRamDisplay = updateCreateVmRamDisplay;
+window.updateCreateVmRamFromInput = updateCreateVmRamFromInput;
+window.updateCreateVmVcpuDisplay = updateCreateVmVcpuDisplay;
+window.updateCreateVmVcpuFromInput = updateCreateVmVcpuFromInput;
+window.updateCreateVmDiskDisplay = updateCreateVmDiskDisplay;
+window.updateCreateVmDiskFromInput = updateCreateVmDiskFromInput;

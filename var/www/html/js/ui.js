@@ -110,6 +110,10 @@ function navigateTo(page) {
         if (window.Settings.loadStorageSettings) {
             window.Settings.loadStorageSettings();
         }
+        // Load ISO library
+        if (window.Settings.fetchIsos) {
+            window.Settings.fetchIsos();
+        }
         // Load update status when navigating to settings
         try {
             window.Settings.loadUpdateStatus();

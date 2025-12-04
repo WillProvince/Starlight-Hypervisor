@@ -8,6 +8,7 @@ import os
 import logging
 import libvirt
 from ..config_loader import get_vm_storage_path, get_default_pool_name
+from .pool import ensure_storage_pool
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +31,11 @@ def create_storage_volume(conn, name, size_gb):
     pool_name = get_default_pool_name()
     storage_path = get_vm_storage_path()
     
+    # Ensure storage pool exists and is running (creates if necessary)
     try:
-        pool = conn.storagePoolLookupByName(pool_name)
-        if pool.info()[0] != libvirt.VIR_STORAGE_POOL_RUNNING:
-            raise Exception(f"Storage pool '{pool_name}' is defined but not running. Please start it with 'sudo virsh pool-start {pool_name}'.")
-
-    except libvirt.libvirtError:
-        raise Exception(f"Storage pool '{pool_name}' not found. Please ensure the '{pool_name}' pool is defined and running.")
+        pool = ensure_storage_pool(conn, pool_name, storage_path)
+    except Exception as e:
+        raise Exception(f"Disk creation failed: {e}")
 
     size_bytes = size_gb * 1024 * 1024 * 1024
     disk_filename = f"{name}.qcow2"
@@ -47,26 +46,28 @@ def create_storage_volume(conn, name, size_gb):
         pool.storageVolLookupByName(disk_filename)
         raise Exception(f"Disk volume '{disk_filename}' already exists in pool.")
     except libvirt.libvirtError as e:
-        if "not found" not in str(e).lower():
+        # Only proceed if volume doesn't exist
+        if e.get_error_code() != libvirt.VIR_ERR_NO_STORAGE_VOL:
             raise e
             
     # Define the volume XML
-    vol_xml = f"""
-    <volume>
-      <name>{disk_filename}</name>
-      <capacity unit='bytes'>{size_bytes}</capacity>
-      <allocation unit='bytes'>0</allocation>
-      <target>
-        <path>{disk_path}</path>
-        <format type='qcow2'/>
-        <permissions>
-          <mode>0644</mode>
-          <owner>107</owner>
-          <group>107</group>
-        </permissions>
-      </target>
-    </volume>
-    """
+    from textwrap import dedent
+    vol_xml = dedent(f"""
+        <volume>
+          <name>{disk_filename}</name>
+          <capacity unit='bytes'>{size_bytes}</capacity>
+          <allocation unit='bytes'>0</allocation>
+          <target>
+            <path>{disk_path}</path>
+            <format type='qcow2'/>
+            <permissions>
+              <mode>0644</mode>
+              <owner>107</owner>
+              <group>107</group>
+            </permissions>
+          </target>
+        </volume>
+    """).strip()
     
     vol = pool.createXML(vol_xml, 0)
     if vol is None:

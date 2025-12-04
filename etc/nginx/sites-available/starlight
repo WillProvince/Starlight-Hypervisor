@@ -115,5 +115,13 @@ server {
 
         # Disable buffering to ensure real-time API responsiveness
         proxy_buffering off;
+
+        # Allow large file uploads (10GB limit for ISO files)
+        client_max_body_size 10G;
+
+        # Increase timeouts for large file uploads
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_connect_timeout 60s;
     }
 }

@@ -10,6 +10,7 @@ import logging
 import subprocess
 import socket
 import json
+import libvirt
 from aiohttp import web
 
 from pyback.auth.user_management import create_user, change_password
@@ -21,6 +22,7 @@ from pyback.config_loader import (
     get_vm_storage_path,
     ensure_config_directories,
 )
+from pyback.storage.pool import ensure_storage_pool
 
 logger = logging.getLogger(__name__)
 
@@ -375,6 +377,19 @@ async def set_storage(request: web.Request) -> web.Response:
             
             if not save_storage_config(config):
                 raise Exception("Failed to save storage configuration")
+            
+            # Initialize storage pool during first-run setup
+            try:
+                conn = libvirt.open('qemu:///system')
+                try:
+                    ensure_storage_pool(conn, config['default_pool_name'], storage_path)
+                    logger.info(f"Storage pool '{config['default_pool_name']}' initialized")
+                except Exception as pool_error:
+                    logger.warning(f"Could not initialize storage pool during setup: {pool_error}")
+                finally:
+                    conn.close()
+            except Exception as e:
+                logger.warning(f"Could not connect to libvirt during setup: {e}")
             
             logger.info(f"Storage path set to {storage_path}")
             

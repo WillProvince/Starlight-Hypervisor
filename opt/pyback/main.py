@@ -58,6 +58,9 @@ from pyback.handlers.network_handlers import (
     get_network_config_handler, update_network_config_handler,
     get_network_status_handler
 )
+from pyback.handlers.iso_handlers import (
+    list_isos, upload_iso, download_iso, delete_iso, get_iso_storage_info
+)
 
 # Import proxies
 from pyback.proxies.vnc_proxy import vnc_proxy_handler
@@ -77,7 +80,8 @@ vm_deployment_module.download_progress = dl_progress
 
 def init_app():
     """Initializes the Aiohttp application with routes."""
-    app = web.Application()
+    # Set client_max_size to allow large ISO uploads (10 GB limit)
+    app = web.Application(client_max_size=10 * 1024 * 1024 * 1024)
     
     # Set up CORS middleware to allow the NGINX frontend to access the API
     async def cors_middleware(app, handler):
@@ -167,6 +171,13 @@ def init_app():
     app.router.add_get('/api/network/config', get_network_config_handler)
     app.router.add_post('/api/network/config', update_network_config_handler)
     app.router.add_get('/api/network/status', get_network_status_handler)
+    
+    # ISO Management
+    app.router.add_get('/api/iso/list', list_isos)
+    app.router.add_post('/api/iso/upload', upload_iso)
+    app.router.add_post('/api/iso/download', download_iso)
+    app.router.add_delete('/api/iso/{filename}', delete_iso)
+    app.router.add_get('/api/iso/storage-info', get_iso_storage_info)
 
     # ---< First-Run Wizard >---
     # Endpoints available only during initial setup (when .needs-firstrun flag exists)
