@@ -3,7 +3,7 @@
     {
       "id": "starlight-official",
       "name": "Starlight Official",
-      "url": "https://raw.githubusercontent.com/WillProvince/Starlight-Apps/refs/heads/Starlight-aiohttp/repo.json",
+      "url": "https://raw.githubusercontent.com/WillProvince/Starlight-Apps/refs/heads/main/repo.json",
       "enabled": true,
       "description": "The official repository of apps curated by the Starlight team!"
     }
