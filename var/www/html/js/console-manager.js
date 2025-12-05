@@ -245,12 +245,6 @@ async function initVncSession(sessionId, name, port) {
                 <button onclick="window.ConsoleManager.vncControl('${sessionId}', 'destroy')" class="console-btn console-btn-dark-red">⚠️ Force Stop</button>
                 <button onclick="window.ConsoleManager.handleVncPaste('${sessionId}')" class="console-btn console-btn-indigo" title="Paste text into VNC">📋 Paste</button>
             </div>
-            <div class="console-info">
-                <span>${name}</span>
-                <div style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.25rem;">
-                    💡 Tip: Copy/paste works! Text copied in VNC auto-copies to your clipboard.
-                </div>
-            </div>
         </div>
     `;
     
