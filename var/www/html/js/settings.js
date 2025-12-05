@@ -292,6 +292,46 @@ async function deleteSettingsUser(username) {
     );
 }
 
+// Handle add repository form submission
+document.addEventListener('DOMContentLoaded', () => {
+    const addRepoForm = document.getElementById('add-repo-form');
+    if (addRepoForm) {
+        addRepoForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const id = document.getElementById('repo-id').value. trim();
+            const name = document.getElementById('repo-name'). value.trim();
+            const url = document.getElementById('repo-url').value.trim();
+            const description = document.getElementById('repo-description').value.trim();
+            const enabled = document.getElementById('repo-enabled').checked;
+            
+            if (!id || !name || !url) {
+                window.UI.showStatus('ID, Name, and URL are required', 'error');
+                return;
+            }
+            
+            const result = await window. API.apiCall('/repositories', 'POST', {
+                id,
+                name,
+                url,
+                description,
+                enabled
+            });
+            
+            if (result && result.status === 'success') {
+                window.UI.showStatus('Repository added successfully', 'success');
+                hideAddRepositoryModal();
+                fetchRepositories();
+                // Reset form
+                addRepoForm.reset();
+            } else {
+                const errorMessage = result?. message || 'Failed to add repository';
+                window.UI. showStatus(errorMessage, 'error');
+            }
+        });
+    }
+});
+
 // Handle create user form submission
 document.addEventListener('DOMContentLoaded', () => {
     const createUserForm = document.getElementById('create-user-form');
