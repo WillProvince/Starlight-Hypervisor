@@ -1,6 +1,6 @@
 PRETTY_NAME="Starlight (aurora)"
 NAME="Starlight"
-VERSION_ID="1.2.0"
+VERSION_ID="1.4"
 VERSION="1 (aurora)"
 VERSION_CODENAME=aurora
 DEBIAN_VERSION_FULL=1
